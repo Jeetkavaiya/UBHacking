@@ -1,0 +1,10 @@
+.env
+.env.*
+cache/
+data/*
+!data/.gitkeep
+__pycache__/
+.pytest_cache/
+.venv/
+raw/
+incidents.json
