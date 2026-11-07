@@ -29,6 +29,13 @@ Without the NASA files, the server runs on clearly labeled **simulated** channel
 | `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` | Voice lines sent as captions, `audio_url: null` |
 | `DATABASE_URL` | In-memory only |
 
+**Gemini quota guard.** With a key set, only incidents whose source is in `GEMINI_SOURCES`
+(default `synthetic,sample-replay`, i.e. demo-triggered) go to Gemini. Natural incidents get
+rule-based diagnoses (`source: "rules"`). `GEMINI_DAILY_LIMIT` (default 18, free tier is 20) caps
+requests per day, counted across restarts in `cache/gemini_usage.json` and reset at midnight
+Pacific. Past the cap, diagnoses come from rules (`source: "rules-quota"`). `/api/health` shows
+`gemini.daily_used` / `daily_limit`.
+
 ## How it works
 
 ```

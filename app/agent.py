@@ -12,10 +12,19 @@ import json
 import logging
 import time
 from collections import deque
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Iterable
 
 log = logging.getLogger(__name__)
+
+# Gemini's free-tier daily quota resets at midnight Pacific. Fixed UTC-8 (PST) is close enough.
+QUOTA_TZ = timezone(timedelta(hours=-8))
+DEFAULT_SOURCES = ("synthetic", "sample-replay")
+
+
+class QuotaExhausted(Exception):
+    pass
 
 ACTIONS = ["monitor", "power_cycle_sensor", "switch_to_backup", "safe_mode", "call_engineer"]
 LEVELS = ["low", "medium", "high"]
@@ -126,14 +135,21 @@ def _valid(d: dict) -> bool:
 
 
 class FlightDirector:
-    def __init__(self, api_key: str, model: str, rpm: int, timeout: float, cache_dir: Path, lookup: Lookup):
+    def __init__(self, api_key: str, model: str, rpm: int, timeout: float, cache_dir: Path, lookup: Lookup,
+                 sources: Iterable[str] = DEFAULT_SOURCES, daily_limit: int = 18):
         self.model, self.timeout, self.lookup = model, timeout, lookup
         self.limiter = RateLimiter(rpm)
         self.queue_lock = asyncio.Lock()  # one diagnosis at a time
         self.cache_path = cache_dir / "diagnosis_cache.json"
         self.cache: dict[str, dict] = json.loads(self.cache_path.read_text()) if self.cache_path.exists() else {}
+        # Quota guard: only these incident sources use Gemini, and at most daily_limit requests per day.
+        self.sources = {s.strip() for s in sources if s.strip()}
+        self.daily_limit = max(0, daily_limit)
+        self.usage_path = cache_dir / "gemini_usage.json"
+        self.usage = self._load_usage()
         self.client = None
-        self.stats = {"requests": 0, "fallbacks": 0, "cache_hits": 0, "rate_limited": 0}
+        self.stats = {"requests": 0, "fallbacks": 0, "cache_hits": 0, "rate_limited": 0,
+                      "skipped_source": 0, "quota_blocked": 0}
         if api_key:
             from google import genai
             from google.genai import types
@@ -147,6 +163,44 @@ class FlightDirector:
     def enabled(self) -> bool:
         return self.client is not None
 
+    # ---------- daily quota ----------
+    @staticmethod
+    def _today() -> str:
+        return datetime.now(QUOTA_TZ).date().isoformat()
+
+    def _load_usage(self) -> dict:
+        try:
+            u = json.loads(self.usage_path.read_text())
+            if u.get("day") == self._today():
+                return {"day": u["day"], "used": int(u.get("used", 0))}
+        except (OSError, ValueError, TypeError, KeyError):
+            pass
+        return {"day": self._today(), "used": 0}
+
+    def _used_today(self) -> int:
+        if self.usage["day"] != self._today():  # quota reset at midnight Pacific
+            self.usage = {"day": self._today(), "used": 0}
+        return self.usage["used"]
+
+    def _count_request(self) -> None:
+        self._used_today()
+        self.usage["used"] += 1
+        try:
+            self.usage_path.parent.mkdir(parents=True, exist_ok=True)
+            self.usage_path.write_text(json.dumps(self.usage))
+        except OSError as e:
+            log.warning("Could not save Gemini usage (%s).", e)
+
+    def _has_budget(self, need: int) -> bool:
+        return self.daily_limit == 0 or self._used_today() + need <= self.daily_limit
+
+    def uses_gemini_for(self, source: str) -> bool:
+        return "all" in self.sources or source in self.sources
+
+    def quota(self) -> dict:
+        return {"sources": sorted(self.sources), "daily_used": self._used_today(),
+                "daily_limit": self.daily_limit or None}
+
     async def diagnose(self, ctx: dict) -> dict:
         key = f"{ctx['channel']}|{ctx['shape']}|{ctx['source']}"
         if ctx["source"] == "sample-replay" and key in self.cache:
@@ -155,7 +209,14 @@ class FlightDirector:
         related = await self.lookup(ctx["channel"], 30)
         if not self.client:
             return {**rule_diagnosis(ctx, related), "source": "rules"}
+        if not self.uses_gemini_for(ctx["source"]):  # natural incidents: save quota for the demo
+            self.stats["skipped_source"] += 1
+            return {**rule_diagnosis(ctx, related), "source": "rules"}
         async with self.queue_lock:
+            if not self._has_budget(2):  # each diagnosis needs 2 requests
+                self.stats["quota_blocked"] += 1
+                log.warning("Gemini daily limit reached (%s/%s); using rules.", self._used_today(), self.daily_limit)
+                return {**rule_diagnosis(ctx, related), "source": "rules-quota"}
             try:
                 d = await self._gemini(ctx)
                 if ctx["source"] == "sample-replay":
@@ -163,6 +224,9 @@ class FlightDirector:
                     self.cache_path.parent.mkdir(parents=True, exist_ok=True)
                     self.cache_path.write_text(json.dumps(self.cache, indent=1))
                 return {**d, "source": "gemini"}
+            except QuotaExhausted:  # retries used up the budget mid-diagnosis
+                self.stats["quota_blocked"] += 1
+                return {**rule_diagnosis(ctx, related), "source": "rules-quota"}
             except Exception as e:  # anything goes wrong -> rules, demo keeps going
                 log.warning("Gemini failed (%s); using rules.", e)
                 self.stats["fallbacks"] += 1
@@ -171,8 +235,11 @@ class FlightDirector:
     async def _call(self, contents, config):
         from google.genai import errors
         for attempt in range(4):
+            if not self._has_budget(1):
+                raise QuotaExhausted()
             await self.limiter.acquire()
             self.stats["requests"] += 1
+            self._count_request()  # failed and retried requests may count against the quota too
             try:
                 return await asyncio.wait_for(
                     self.client.aio.models.generate_content(model=self.model, contents=contents, config=config),

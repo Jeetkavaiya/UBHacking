@@ -102,7 +102,8 @@ async def lifespan(app: FastAPI):
     A.storage = Storage(S.database_url)
     await A.storage.init()
     A.engine = Engine(channels, S)
-    A.agent = FlightDirector(S.gemini_api_key, S.gemini_model, S.gemini_rpm, S.gemini_timeout, S.cache_dir, lookup)
+    A.agent = FlightDirector(S.gemini_api_key, S.gemini_model, S.gemini_rpm, S.gemini_timeout, S.cache_dir, lookup,
+                             sources=S.gemini_sources, daily_limit=S.gemini_daily_limit)
     A.voice = Voice(S.elevenlabs_api_key, S.elevenlabs_voice_id, S.elevenlabs_model, S.cache_dir / "audio")
     A.vq = VoiceQueue(A.voice, A.hub)
     A.manager = Manager(S, A.engine, A.agent, A.storage, A.hub.broadcast, A.vq.say)
@@ -132,7 +133,8 @@ async def health():
         "channels": len(A.channels),
         "speed": A.engine.speed,
         "open_incidents": len(A.manager.open_incidents()),
-        "gemini": {"enabled": A.agent.enabled, "model": S.gemini_model if A.agent.enabled else None, **A.agent.stats},
+        "gemini": {"enabled": A.agent.enabled, "model": S.gemini_model if A.agent.enabled else None,
+                   **A.agent.stats, **A.agent.quota()},
         "voice": {"enabled": A.voice.enabled, **A.voice.stats},
         "storage": {"mode": A.storage.mode, "timescale": A.storage.timescale, **A.storage.stats},
     }

@@ -189,3 +189,63 @@ def test_big_spike_still_called_spike():
     x[300:320] += 3.0  # far outside the training range too
     hits = [r for r in run(det, x) if r.flagged]
     assert hits and hits[0].component == "jump"
+
+# ---------- Gemini quota guard (fake client, no real requests) ----------
+def _fake_director(tmp_path, **kw):
+    from types import SimpleNamespace as NS
+    from app.agent import FlightDirector
+
+    seen = {"calls": 0}
+
+    async def lookup(cid, secs):
+        return []
+
+    class FakeModels:
+        async def generate_content(self, model, contents, config):
+            seen["calls"] += 1
+            if config.tools:  # request 1: no tool call, the director adds related channels itself
+                return NS(function_calls=[], candidates=[])
+            import json as _json
+            return NS(text=_json.dumps({"subsystem": "Group E", "severity": "low", "likely_cause": "Brief jump.",
+                                        "recommended_action": "monitor", "confidence": "medium",
+                                        "voice_summary": "Low severity on E-1."}))
+
+    fd = FlightDirector("", "fake", 60, 5, tmp_path, lookup, **kw)
+    fd.client = NS(aio=NS(models=FakeModels()))
+    return fd, seen
+
+
+def _ctx(source):
+    return {"channel": "E-1", "shape": "spike", "source": source, "peak_surprise": 5,
+            "threshold": 4, "subsystem": "Group E", "group": "E"}
+
+
+@pytest.mark.parametrize("source,expect,calls", [
+    ("synthetic", "gemini", 2),        # injected demo fault -> Gemini
+    ("labeled-anomaly", "rules", 0),   # natural incident -> rules, no quota used
+    ("detected", "rules", 0),
+])
+def test_gemini_only_for_demo_sources(tmp_path, source, expect, calls):
+    import asyncio
+    fd, seen = _fake_director(tmp_path)
+    d = asyncio.run(fd.diagnose(_ctx(source)))
+    assert d["source"] == expect and seen["calls"] == calls
+    assert fd.quota()["daily_used"] == calls
+
+
+def test_gemini_sources_all(tmp_path):
+    import asyncio
+    fd, seen = _fake_director(tmp_path, sources=["all"])
+    assert asyncio.run(fd.diagnose(_ctx("detected")))["source"] == "gemini"
+
+
+def test_gemini_daily_limit_falls_back_and_persists(tmp_path):
+    import asyncio
+    fd, seen = _fake_director(tmp_path, daily_limit=4)
+    out = [asyncio.run(fd.diagnose(_ctx("synthetic")))["source"] for _ in range(3)]
+    assert out == ["gemini", "gemini", "rules-quota"] and seen["calls"] == 4
+    assert fd.stats["quota_blocked"] == 1
+    # A restart must not reset today's count.
+    fd2, seen2 = _fake_director(tmp_path, daily_limit=4)
+    assert fd2.quota()["daily_used"] == 4
+    assert asyncio.run(fd2.diagnose(_ctx("synthetic")))["source"] == "rules-quota" and seen2["calls"] == 0

@@ -51,6 +51,11 @@ class Settings:
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     gemini_rpm: int = _i("GEMINI_RPM", 8)
     gemini_timeout: float = _f("GEMINI_TIMEOUT", 25)
+    # Incident sources that may use Gemini; others get rule-based diagnoses. "all" = every source.
+    gemini_sources: list[str] = field(
+        default_factory=lambda: _list("GEMINI_SOURCES") or ["synthetic", "sample-replay"])
+    # Max Gemini requests per day (free tier is 20). 0 = no limit. Survives restarts.
+    gemini_daily_limit: int = _i("GEMINI_DAILY_LIMIT", 18)
 
     # ElevenLabs
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
