@@ -8,3 +8,5 @@ __pycache__/
 .venv/
 raw/
 incidents.json
+handoff.md
+CLAUDE.md

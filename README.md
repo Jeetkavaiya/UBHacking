@@ -10,7 +10,7 @@ Every step is spoken with ElevenLabs and saved to Tiger Data.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # add keys when you have them; everything works without them
+cp env.template .env          # PowerShell: Copy-Item env.template .env. Add keys when you have them; everything works without them
 ./scripts/download_data.sh    # NASA data into ./data (needs a Kaggle API key)
 uvicorn app.main:app --reload --port 8000
 ```
