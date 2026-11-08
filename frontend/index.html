@@ -142,13 +142,43 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; pa
 .analyzing i:nth-child(2) { animation-delay: .15s; } .analyzing i:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 50% { opacity: .2; transform: translateY(-2px); } }
 
+/* ---------- SIM-1 ---------- */
+#simPanel .sim-body { padding: 12px 14px; display: grid; gap: 12px; }
+.sim-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.tile .k { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tile .v { font: 600 15px var(--mono); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .s { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.eclipse { border-color: #34406a; background: #0b1020; }
+.tile.sun .v { color: var(--warn); }
+.tile.hot .v { color: var(--bad); }
+.tile.b .v { color: var(--syn); }
+.scen { display: flex; gap: 6px; flex-wrap: wrap; }
+.scen .btn { font-size: 12px; padding: 5px 10px; }
+.score { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.score .tile .v { font-size: 14px; white-space: normal; }
+.inc .rc { margin: 6px 0 2px; font-size: 13px; }
+.inc .rc b { color: var(--accent); }
+.inc ul.ev { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; color: var(--muted); }
+.inc .pb { font-size: 12px; margin-top: 2px; }
+.inc .cmds { margin-top: 6px; display: grid; gap: 3px; }
+.inc .cmd { font: 11px var(--mono); color: #a8f0cf; }
+.inc .cmd.bad { color: #ffb3ba; }
+.inc .truth { margin-top: 8px; padding: 7px 9px; border-radius: 6px; font-size: 12px; border: 1px solid var(--line-2); }
+.inc .truth.good { border-color: color-mix(in srgb, var(--ok) 60%, transparent); }
+.inc .truth.bad { border-color: color-mix(in srgb, var(--bad) 60%, transparent); }
+.ch .valrow { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); margin-top: 2px; }
+.ch .valrow b { color: var(--text); font-weight: 600; }
+.ch.hide { display: none; }
+
 /* ---------- log ---------- */
 #log { list-style: none; margin: 0; padding: 6px 0; max-height: 330px; overflow-y: auto; font-size: 12px; }
 #log li { padding: 5px 14px; display: grid; grid-template-columns: 62px 1fr; gap: 8px; border-bottom: 1px solid rgba(28,42,64,.5); }
 #log li .t { font: 11px var(--mono); color: var(--dim); }
 #log li.k-anomaly_detected, #log li.k-escalated { color: #ffb3ba; }
 #log li.k-action_taken, #log li.k-closed { color: #a8f0cf; }
-#log li.k-fault_injected { color: #e2c7f5; }
+#log li.k-fault_injected, #log li.k-scenario_started { color: #e2c7f5; }
+#log li.k-plan_b { color: #ffd59a; }
 #log li .tag { font: 600 10px var(--mono); color: var(--muted); margin-left: 6px; }
 
 /* ---------- caption + footer ---------- */
@@ -193,7 +223,10 @@ footer { padding: 12px 16px 90px; font-size: 11px; color: var(--muted);
 <header>
   <div class="brand">
     <div class="logo" aria-hidden="true"></div>
-    <div><h1>Mission Control AI</h1><small>Always-on AI flight controller · NASA SMAP / MSL telemetry</small></div>
+    <div><h1>Mission Control AI</h1><small>Always-on AI flight controller · real NASA telemetry + simulated satellite SIM-1</small></div>
+  </div>
+  <div class="speed" id="mode" role="group" aria-label="What streams">
+    <button data-m="nasa" title="Real NASA SMAP / Curiosity replay">NASA</button><button data-m="sim" title="Simulated satellite SIM-1">SIM-1</button><button data-m="both">Both</button>
   </div>
   <div class="chips">
     <span class="chip" id="chipData">data <b>…</b></span>
@@ -218,7 +251,20 @@ footer { padding: 12px 16px 90px; font-size: 11px; color: var(--muted);
         <span><i style="background:var(--ok)"></i>nominal</span>
         <span><i style="background:var(--warn)"></i>elevated</span>
         <span><i style="background:var(--bad)"></i>anomaly</span>
-        <span>inner ring SMAP · outer ring MSL</span>
+        <span id="ringLegend">rings: SMAP · MSL · SIM-1</span>
+      </div>
+    </section>
+
+    <section class="panel" id="simPanel" hidden>
+      <h2>SIM-1 · simulated satellite <span class="badge syn">Simulated</span><span class="count" id="simClock">—</span></h2>
+      <div class="sim-body">
+        <div class="sim-stats" id="simStats"></div>
+        <div class="controls">
+          <span class="lbl">Run a fault scenario</span>
+          <div class="scen" id="scenarios"></div>
+          <button class="btn" id="simReset" title="Healthy satellite again; closes open SIM-1 incidents">Reset satellite</button>
+        </div>
+        <div class="score" id="score"></div>
       </div>
     </section>
 
@@ -279,10 +325,12 @@ footer { padding: 12px 16px 90px; font-size: 11px; color: var(--muted);
   Real NASA SMAP/MSL telemetry (anonymized, scaled to −1..1), replayed faster than real time ·
   Live demo uses a curated set of 10 channels (M-6 and S-2 excluded); precision/recall are reported on all 82 ·
   <span style="color:var(--syn)">Synthetic faults</span> are labeled · All spacecraft commands are simulated ·
-  Only P = Power and R = Radiation are documented groups
+  Only P = Power and R = Radiation are documented groups ·
+  <span style="color:var(--syn)">SIM-1 is a fictional simulated satellite</span> built for this project; its scenarios have hidden answer keys used only for grading
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="config.js"></script>
 <script>
 "use strict";
 // =====================================================================
@@ -293,7 +341,24 @@ const S = {
   channels: {}, order: [], buf: {}, incidents: {}, log: [],
   selected: null, threshold: 4, vetoSeconds: 30, clockOffset: 0,
   speed: 1, voiceOn: false, stuck: {}, dataMode: "…",
+  mode: "both", sim: null, scenarios: [], parts: {}, simDrawn: 0,
 };
+const KINDS = { nasa: ["nasa"], sim: ["sim"], both: ["nasa", "sim"] };
+const activeKind = (cid) => (KINDS[S.mode] || KINDS.both).includes(S.channels[cid]?.kind || "nasa");
+const LABELS = {
+  monitor: "Keep monitoring", power_cycle_sensor: "Power cycle the sensor", switch_to_backup: "Switch to backup unit",
+  safe_mode: "Enter safe mode", call_engineer: "Call the on-call engineer", shed_load: "Switch off the payload to save power",
+};
+const partName = (p) => S.parts[p] || p;
+function labelOf(action, target) {
+  const part = S.parts[target];
+  if (part && !["none", "spacecraft"].includes(target)) {
+    if (action === "power_cycle_sensor") return `Power cycle the ${part}`;
+    if (action === "switch_to_backup") return `Switch the ${part} to its backup`;
+  }
+  return LABELS[action] || action;
+}
+const fmtVal = (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2));
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const serverNow = () => Date.now() / 1000 + S.clockOffset;
@@ -309,8 +374,10 @@ function toast(msg) {
   setTimeout(() => d.remove(), 4500);
 }
 
+// Backend address: "" = same server (local); set in config.js when the page is hosted elsewhere (Vercel).
+const API = String(window.MC_API_BASE || "").replace(/\/+$/, "");
 async function api(path, opts = {}) {
-  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const r = await fetch(API + path, { headers: { "Content-Type": "application/json" }, ...opts });
   let body = null;
   try { body = await r.json(); } catch { /* empty */ }
   if (!r.ok) throw new Error((body && body.detail) || `${r.status} ${r.statusText}`);
@@ -339,7 +406,10 @@ function inLabel(cid, idx) {
   return false;
 }
 function openIncidentFor(cid) {
-  for (const inc of Object.values(S.incidents)) if (inc.channel === cid && inc.status !== "closed") return inc;
+  for (const inc of Object.values(S.incidents)) {
+    if (inc.status === "closed") continue;
+    if (inc.channel === cid || (inc.symptoms || []).some((s) => s.channel === cid)) return inc;
+  }
   return null;
 }
 const groupName = (c) => c.subsystem; // server already uses Power / Radiation / "Group X"
@@ -423,19 +493,39 @@ function buildChannels() {
     const c = S.channels[cid];
     const el = document.createElement("div");
     el.className = "ch"; el.dataset.cid = cid;
-    el.innerHTML = `<div class="top"><span class="id">${esc(cid)}</span><span class="sub">${esc(groupName(c))} · ${esc(c.spacecraft)}</span>
-      <span class="sur" data-sur>0.0</span></div><canvas></canvas>`;
+    const sim = c.kind === "sim";
+    const sub = sim ? `${c.name} · SIM-1` : `${groupName(c)} · ${c.spacecraft}`;
+    const rng = sim && c.normal_range ? `normal ${fmtVal(c.normal_range[0])}–${fmtVal(c.normal_range[1])}` : "";
+    el.innerHTML = `<div class="top"><span class="id">${esc(cid)}</span><span class="sub" title="${esc(sub)}">${esc(sub)}</span>
+      <span class="sur" data-sur>0.0</span></div><canvas></canvas>
+      ${sim ? `<div class="valrow"><span><b data-val>—</b> ${esc(c.units)}${c.monitored === false ? " · context only" : ""}</span><span>${esc(rng)}</span></div>` : ""}`;
     el.onclick = () => select(cid);
     box.appendChild(el);
   }
-  $("#chCount").textContent = `${S.order.length} live`;
+  renderMode();
+}
+
+function renderMode() {
+  for (const b of document.querySelectorAll("#mode button")) b.classList.toggle("active", b.dataset.m === S.mode);
+  let n = 0;
+  for (const el of document.querySelectorAll(".ch")) {
+    const on = activeKind(el.dataset.cid);
+    el.classList.toggle("hide", !on);
+    n += on ? 1 : 0;
+  }
+  $("#chCount").textContent = `${n} live`;
+  const simOn = S.sim && (S.mode === "sim" || S.mode === "both");
+  $("#simPanel").hidden = !simOn;
 }
 
 function surColor(s) { return s >= S.threshold ? COLORS.bad : s >= S.threshold * 0.5 ? COLORS.warn : COLORS.ok; }
 
 function renderChannels() {
   for (const el of document.querySelectorAll(".ch")) {
+    if (el.classList.contains("hide")) continue;
     const cid = el.dataset.cid, s = lastSurprise(cid);
+    const val = el.querySelector("[data-val]");
+    if (val) { const v = S.buf[cid]?.v; if (v && v.length) val.textContent = fmtVal(v[v.length - 1]); }
     const sur = el.querySelector("[data-sur]");
     sur.textContent = s.toFixed(1); sur.style.color = surColor(s);
     el.classList.toggle("sel", cid === S.selected);
@@ -449,12 +539,14 @@ function select(cid) {
   S.selected = cid;
   const c = S.channels[cid];
   $("#dId").textContent = cid; $("#detailId").textContent = cid;
-  $("#dSub").textContent = groupName(c);
+  $("#dSub").textContent = c.kind === "sim"
+    ? `${c.name} (${c.units}) · ${c.subsystem} · normal ${fmtVal(c.normal_range[0])} to ${fmtVal(c.normal_range[1])}`
+    : groupName(c);
   $("#dCraft").textContent = c.spacecraft;
   const flat = $("#flatBtn");
   const canFlat = S.stuck[cid] !== false;
   flat.disabled = !canFlat;
-  flat.title = canFlat ? "Freeze the reading" : `${cid} is often flat in training data, so the detector can't tell a frozen sensor from normal. Try P-1, S-1, G-1, P-10 or C-1.`;
+  flat.title = canFlat ? "Freeze the reading" : `${cid} is often flat in its training data, so the detector can't tell a frozen sensor from normal.`;
   $("#replayBtn").disabled = !(c.labeled_anomalies || []).length;
   Scene3D.setSelected(cid);
   renderChannels();
@@ -468,6 +560,8 @@ const STATUS = {
   awaiting_approval: "Needs approval", monitoring: "Monitoring recovery", escalated: "Escalated", closed: "Closed",
 };
 function tagBadge(inc) {
+  if (inc.source === "sim-scenario") return `<span class="badge syn" title="Fault scenario on the simulated satellite">SIM-1 scenario</span>`;
+  if (inc.source === "sim-nominal") return `<span class="badge syn" title="No scenario was running">SIM-1 · no scenario</span>`;
   if (inc.source === "synthetic") return `<span class="badge syn">Synthetic fault</span>`;
   if (inc.source === "sample-replay") return `<span class="badge nasa">NASA anomaly replay</span>`;
   if (inc.source === "labeled-anomaly") return `<span class="badge nasa">Real NASA labeled anomaly</span>`;
@@ -496,18 +590,40 @@ function incCard(inc) {
       <span style="margin-left:auto;display:flex;gap:6px">
         <button class="btn good" data-approve="${esc(inc.id)}">Approve</button>
         <button class="btn danger" data-decline="${esc(inc.id)}">Decline</button></span></div>`;
+  } else if (inc.status === "diagnosed") {
+    act = `<div class="act"><span class="what">${esc(inc.action_label)}</span><span class="muted">→ preparing</span></div>`;
   } else if (inc.action_label) {
     const done = inc.status === "closed" ? (inc.outcome || "closed") : STATUS[inc.status];
     act = `<div class="act"><span class="what">${esc(inc.action_label)}</span><span class="muted">→ ${esc(done)}</span></div>`;
   }
+  const sim = inc.kind === "sim";
+  let simInfo = "";
+  if (sim) {
+    const syms = (inc.symptoms || []).map((s) => `<span class="badge" title="${esc(s.mission_time || "")}">+${esc(s.seconds_after_first)}s ${esc(s.name)}</span>`).join("");
+    if (syms) simInfo += `<div class="row" style="margin-top:6px">${syms}</div>`;
+    if (d && d.root_cause) {
+      simInfo += `<div class="rc">Root cause: <b>${esc(d.root_cause === "none" ? "no part failed" : partName(d.root_cause))}</b></div>`;
+      if ((d.evidence || []).length) simInfo += `<ul class="ev">${d.evidence.map((e) => `<li>${esc(e)}</li>`).join("")}</ul>`;
+      if (d.fallback_action) simInfo += `<div class="pb muted">Plan B: ${esc(labelOf(d.fallback_action, d.fallback_target))}${inc.attempt > 1 ? " · <b style=\"color:var(--warn)\">running</b>" : ""}</div>`;
+    }
+    if ((inc.commands || []).length) simInfo += `<div class="cmds">${inc.commands.map((c) => `<div class="cmd ${c.ok ? "" : "bad"}">${esc(c.mission_time)} ${c.ok ? "✓" : "✗"} ${esc(c.result)}</div>`).join("")}</div>`;
+    if (inc.truth && inc.grade) {
+      const ok = inc.grade.root_cause_ok && inc.grade.action_ok;
+      const tr = inc.truth.root_cause === "none" ? "no part failed" : partName(inc.truth.root_cause);
+      simInfo += `<div class="truth ${ok ? "good" : "bad"}"><b>Answer key:</b> ${esc(tr)} · root cause ${inc.grade.root_cause_ok ? "✓" : "✗"} · first action ${inc.grade.action_ok ? "✓" : "✗"}
+        <div class="muted">${esc(inc.truth.summary || "")}</div></div>`;
+    }
+  }
+  const title = sim ? `${inc.name || inc.channel} · ${inc.shape || "anomaly"}` : `${inc.channel} · ${inc.shape || "anomaly"}`;
   return `<div class="inc sev-${esc(sev)} ${inc.status === "closed" ? "closed" : ""}" data-inc="${esc(inc.id)}">
-    <div class="row"><span class="title">${esc(inc.channel)} · ${esc(inc.shape || "anomaly")}</span>
+    <div class="row"><span class="title">${esc(title)}</span>
       <span class="badge status ${urgent ? "urgent" : ""}">${esc(STATUS[inc.status] || inc.status)}</span>
       <span class="time">${esc(inc.id)} · ${fmtTime(inc.opened_at)}</span></div>
     <div class="row" style="margin-top:6px">${tagBadge(inc)}${aiBadge(d)}
       ${sev ? `<span class="badge">${esc(sev)} severity</span>` : ""}
       ${inc.tier ? `<span class="badge">tier ${inc.tier}</span>` : ""}</div>
     ${d ? `<div class="cause">${esc(d.likely_cause)}</div>` : ""}
+    ${simInfo}
     <div class="meta"><span>${esc(inc.subsystem)} · ${esc(inc.spacecraft)}</span><span>peak surprise ${Number(inc.peak_surprise || 0).toFixed(1)}</span>
       ${d ? `<span>confidence ${esc(d.confidence)}</span>` : ""}</div>
     ${act}</div>`;
@@ -596,7 +712,7 @@ const Voice = {
       let fell = false;
       const fallback = () => { if (!fell) { fell = true; this.speak(m.text).then(done); } };
       if (m.audio_url) {
-        const a = new Audio(m.audio_url);
+        const a = new Audio(/^https?:/.test(m.audio_url) ? m.audio_url : API + m.audio_url);
         a.onended = done; a.onerror = fallback;
         a.play().catch(fallback);
         setTimeout(done, 15000);
@@ -656,6 +772,75 @@ $("#replayBtn").onclick = async () => {
   try { await api(`/api/replay?channel=${encodeURIComponent(S.selected)}&which=0`, { method: "POST" }); }
   catch (err) { toast(err.message); }
 };
+
+// =====================================================================
+//  Mode switch + SIM-1 panel
+// =====================================================================
+$("#mode").addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  try { S.mode = (await api("/api/control/mode", { method: "POST", body: JSON.stringify({ mode: b.dataset.m }) })).mode; renderMode(); }
+  catch (err) { toast(err.message); }
+});
+
+const UNIT = { reaction_wheel: "Wheel", battery_temp_sensor: "Temp sensor", heater: "Heater ctrl", radio: "Radio" };
+function renderSim(b, force = false) {
+  if (!b) return;
+  S.sim = b;
+  const now = Date.now();
+  if (!force && now - S.simDrawn < 400) return; // ~2.5 updates per second is plenty
+  S.simDrawn = now;
+  $("#simClock").textContent = `mission ${b.t}`;
+  const units = Object.entries(b.active || {});
+  const onB = units.filter(([, v]) => v === "B").map(([k]) => UNIT[k] || k);
+  const tiles = [
+    { k: "Orbit", v: b.eclipse ? "🌑 Eclipse" : "☀ Sunlight", s: `${b.next} in ${b.minutes_to_next} min`, c: b.eclipse ? "eclipse" : "sun" },
+    { k: "Battery", v: `${b.battery_pct}%`, s: "charge estimate", c: b.battery_pct < 45 ? "hot" : "" },
+    { k: "Heater", v: b.heater ? "ON" : "off", s: "thermostat 8–12 °C" },
+    { k: "Payload", v: b.payload ? (b.imaging ? "IMAGING" : "on") : "off", s: b.mode === "safe" ? "SAFE MODE" : "normal mode",
+      c: b.mode === "safe" ? "hot" : "" },
+    { k: "Units on backup", v: onB.length ? onB.join(", ") : "none", s: "one spare (B) each", c: onB.length ? "b" : "" },
+    { k: "Scenario", v: b.scenario ? b.scenario.title : "none running", s: b.scenario ? `started ${b.scenario.started_at}` : "healthy satellite" },
+  ];
+  $("#simStats").innerHTML = tiles.map((t) => `<div class="tile ${t.c || ""}"><div class="k">${esc(t.k)}</div>
+    <div class="v" title="${esc(t.v)}">${esc(t.v)}</div><div class="s">${esc(t.s)}</div></div>`).join("");
+}
+
+function buildScenarios() {
+  $("#scenarios").innerHTML = S.scenarios.map((s) =>
+    `<button class="btn" data-scen="${esc(s.key)}" title="${esc(s.operator_hint)}">${esc(s.title)}</button>`).join("");
+}
+$("#scenarios").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-scen]");
+  if (!b) return;
+  b.disabled = true;
+  try {
+    const r = await api(`/api/sim/scenarios/${b.dataset.scen}`, { method: "POST" });
+    toast(`SIM-1 scenario started: ${r.title}${r.skipped_minutes ? ` (skipped ${r.skipped_minutes} mission min ahead)` : ""}`);
+    if (S.mode === "nasa") { S.mode = "sim"; renderMode(); }
+  } catch (err) { toast(err.message); }
+  finally { setTimeout(() => (b.disabled = false), 1500); }
+});
+$("#simReset").onclick = async () => {
+  try { renderSim(await api("/api/sim/reset", { method: "POST" }), true); toast("SIM-1 reset: healthy satellite."); }
+  catch (err) { toast(err.message); }
+};
+
+let scoreTimer = null;
+function refreshScore() {
+  clearTimeout(scoreTimer);
+  scoreTimer = setTimeout(async () => {
+    try {
+      const sb = await api("/api/sim/scoreboard");
+      const who = { rules: "Rule-based baseline", gemini: "Gemini flight director" };
+      const rows = Object.entries(sb.totals || {});
+      $("#score").innerHTML = rows.length ? rows.map(([k, t]) => `<div class="tile"><div class="k">${esc(who[k] || k)}</div>
+        <div class="v">root cause ${t.root_cause_ok}/${t.incidents} · action ${t.action_ok}/${t.incidents}</div>
+        <div class="s">graded against SIM-1's hidden answer key</div></div>`).join("")
+        : `<div class="muted" style="font-size:12px">Scoreboard: run a scenario to grade the flight director against the hidden answer key.</div>`;
+    } catch { /* sim off */ }
+  }, 500);
+}
 
 // =====================================================================
 //  Health chips
@@ -728,14 +913,6 @@ const Scene3D = (() => {
       new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0.85 }));
     root.add(core, coreGlow);
 
-    // orbit rings
-    for (const r of [5, 7.6]) {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.015, r + 0.015, 160),
-        new THREE.MeshBasicMaterial({ color: 0x26385a, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
-      ring.rotation.x = Math.PI / 2;
-      root.add(ring);
-    }
-
     raycaster = new THREE.Raycaster(); pointer = new THREE.Vector2();
     const cv = renderer.domElement;
     cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; idleFor = 0; cv.setPointerCapture(e.pointerId); cv._moved = 0; });
@@ -757,7 +934,7 @@ const Scene3D = (() => {
     renderer.setSize(w, h, false);
     renderer.domElement.style.width = w + "px"; renderer.domElement.style.height = h + "px";
     camera.aspect = w / Math.max(h, 1);
-    const dist = w < 600 ? 19 : 14; // elevated view so both orbits read as rings
+    const dist = w < 600 ? 24 : 17.5; // elevated view so every orbit reads as a ring
     camera.position.set(0, dist * 0.42, dist);
     camera.lookAt(0, -0.6, 0);
     camera.updateProjectionMatrix();
@@ -771,16 +948,27 @@ const Scene3D = (() => {
     if (hit) select(hit.object.userData.cid);
   }
 
+  let rings = [];
   function build(order, channels) {
-    for (const n of Object.values(nodes)) { root.remove(n.group); n.label.remove(); }
+    for (const n of Object.values(nodes)) { root.remove(n.group); root.remove(n.beam); n.label.remove(); }
     for (const k of Object.keys(nodes)) delete nodes[k];
+    for (const r of rings) root.remove(r);
+    rings = [];
     labels.innerHTML = "";
     if (!ok() || !root) return;
     const crafts = {};
     for (const cid of order) (crafts[channels[cid].spacecraft] ||= []).push(cid);
-    const names = Object.keys(crafts).sort((a, b) => (a === "SMAP" ? -1 : b === "SMAP" ? 1 : a.localeCompare(b)));
+    const rank = (c) => (c === "SMAP" ? 0 : c === "MSL" ? 1 : 2);
+    const names = Object.keys(crafts).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    const RADII = [4.4, 6.8, 9.2];
     names.forEach((craft, ri) => {
-      const list = crafts[craft], radius = ri === 0 ? 5 : 7.6;
+      const list = crafts[craft], radius = RADII[Math.min(ri, RADII.length - 1)];
+      const sim = channels[list[0]].kind === "sim";
+      const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.015, radius + 0.015, 180),
+        new THREE.MeshBasicMaterial({ color: sim ? 0x5a3d7a : 0x26385a, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+      ring.rotation.x = Math.PI / 2;
+      ring.userData.kind = sim ? "sim" : "nasa";
+      root.add(ring); rings.push(ring);
       list.forEach((cid, k) => {
         const a = (k / list.length) * Math.PI * 2 + ri * 0.4;
         const g = new THREE.Group();
@@ -816,7 +1004,11 @@ const Scene3D = (() => {
     core.rotation.y += dt * 0.25; core.rotation.x += dt * 0.1;
     let anyAlert = false;
     const w = host.clientWidth, h = host.clientHeight, v = new THREE.Vector3();
+    for (const r of rings) r.visible = (KINDS[S.mode] || KINDS.both).includes(r.userData.kind);
     for (const [cid, n] of Object.entries(nodes)) {
+      const on = activeKind(cid);
+      n.group.visible = on; n.beam.visible = on;
+      if (!on) { n.label.style.display = "none"; continue; }
       const s = lastSurprise(cid), r = Math.min(s / S.threshold, 1.5);
       const target = r < 0.5 ? cOk().lerp(cWarn(), r / 0.5) : r < 1 ? cWarn().lerp(cBad(), (r - 0.5) / 0.5) : cBad();
       n.cur.lerp(target, 0.15);
@@ -856,7 +1048,7 @@ const Scene3D = (() => {
 let ws, retry = 0;
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws = new WebSocket(API ? `${API.replace(/^http/, "ws")}/ws` : `${proto}://${location.host}/ws`);
   const conn = $("#conn");
   ws.onopen = () => { retry = 0; conn.textContent = "● live"; conn.className = "chip ok"; };
   ws.onclose = () => {
@@ -869,9 +1061,12 @@ function connect() {
       if (m.t) S.clockOffset = m.t - Date.now() / 1000;
       for (const [cid, d] of Object.entries(m.data)) pushReadings(cid, d);
       if (m.speed && m.speed !== S.speed) { S.speed = m.speed; renderSpeed(); }
+      if (m.mode && m.mode !== S.mode) { S.mode = m.mode; renderMode(); }
+      if (m.sim) renderSim(m.sim);
     } else if (m.type === "event") {
       addLog(m.event);
       if (m.incident) upsertIncident(m.incident);
+      if (m.incident?.kind === "sim" || m.event.kind === "scenario_started") refreshScore();
     } else if (m.type === "voice") {
       Voice.add(m);
     } else if (m.type === "hello") {
@@ -882,6 +1077,11 @@ function connect() {
 
 async function onHello(m) {
   S.threshold = m.threshold ?? 4; S.vetoSeconds = m.veto_seconds ?? 30; S.speed = m.speed ?? 1;
+  S.mode = m.mode || "both"; S.scenarios = m.scenarios || [];
+  if (m.sim) {
+    try { S.parts = (await api("/api/sim")).parts || {}; } catch { /* ok */ }
+    buildScenarios(); renderSim(m.sim, true); refreshScore();
+  }
   S.channels = {}; S.order = [];
   for (const c of m.channels) { S.channels[c.id] = c; S.order.push(c.id); initBuf(c.id, m.history?.[c.id]); }
   S.incidents = {};

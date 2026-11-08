@@ -197,6 +197,18 @@ Event kinds: `anomaly_detected`, `agent_analyzing`, `diagnosis`, `veto_window`, 
 The dashboard should be served from `frontend/` by this same server: published claude.ai
 pages can't call other sites.
 
+## Deploy
+
+**Backend** (Docker, for example on Render).
+- `demo_data/` is a 370 KB copy of the 10 demo channels: the value column only, as float32. It is built by `python scripts/make_demo_data.py`.
+- The full 425 MB dataset stays local, so the image builds straight from GitHub.
+- Set `GEMINI_API_KEY`, `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` as host environment variables, never in git.
+
+**Dashboard** (static, for example on Vercel, root directory `frontend`).
+- Put the backend URL in `frontend/config.js`.
+- The page then calls that backend for REST, the WebSocket, and voice audio. CORS is open.
+- Locally, uvicorn serves the dashboard itself and `config.js` leaves the address empty.
+
 ## Tiger Data
 
 Set `DATABASE_URL` to your Tiger Cloud service. On start the app creates `telemetry`,

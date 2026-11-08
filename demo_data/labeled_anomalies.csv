@@ -1,0 +1,11 @@
+chan_id,spacecraft,anomaly_sequences,class,num_values
+P-1,SMAP,"[[2149, 2349], [4536, 4844], [3539, 3779]]","[contextual, contextual, contextual]",8505
+S-1,SMAP,"[[5300, 5747]]",[point],7331
+E-1,SMAP,"[[5000, 5030], [5610, 6086]]","[contextual, contextual]",8516
+A-1,SMAP,"[[4690, 4774]]",[point],8640
+D-1,SMAP,"[[5250, 8508]]",[point],8509
+G-1,SMAP,"[[4770, 4890]]",[contextual],8469
+P-10,MSL,"[[4590, 4720]]",[point],6100
+T-4,MSL,"[[1172, 1240]]",[point],2217
+F-7,MSL,"[[1250, 1450], [2670, 2790], [3325, 3425]]","[contextual, contextual, contextual]",5054
+C-1,MSL,"[[550, 750], [2100, 2210]]","[point, contextual]",2264

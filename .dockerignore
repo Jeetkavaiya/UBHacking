@@ -1,0 +1,14 @@
+.venv
+.env
+.env.*
+raw
+data
+cache
+.git
+.pytest_cache
+__pycache__
+archive.zip
+incidents.json
+results
+handoff.md
+CLAUDE.md
