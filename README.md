@@ -275,18 +275,19 @@ Graded automatically against the hidden answer key (`GET /api/sim/scoreboard`).
 
 | Scenario | Naive rules | Gemini flight director (real API) |
 |---|---|---|
-| Radiation glitch | ✅ none, monitor | *pending* |
+| Radiation glitch | ✅ none, monitor | ✅ none, a brief glitch: monitor |
 | Imaging pass in eclipse | ❌ blamed the battery | ✅ **none, planned imaging pass: monitor** |
-| Reaction wheel friction | ✅ reaction wheel | *pending* |
+| Reaction wheel friction | ✅ reaction wheel | ✅ reaction wheel: switch to wheel B (called `get_sensor_history`) |
 | Solar array power loss | ❌ blamed the battery | ✅ **solar array: payload off, then plan B (safe mode), then engineer** |
-| Heater stuck on | ❌ blamed the battery | *pending* (that run hit the free-tier rate limit; rules took over) |
-| Frozen temperature sensor | ✅ temperature sensor | *pending* |
-| **Root cause right** | **3 / 6** | **2 / 2 so far** |
+| Heater stuck on | ❌ blamed the battery | ❌ blamed the temperature sensor (thought a false low reading kept the heater on) |
+| Frozen temperature sensor | ✅ temperature sensor (the reboot failed, then the backup) | ✅ temperature sensor: straight to backup B, skipping the useless reboot |
+| **Root cause right** | **3 / 6** | **5 / 6** |
 
-The naive rules blame the part the first alarming sensor describes. They fail exactly when the
-cause sits elsewhere. Gemini's evidence quoted the data. For example, on the solar loss: *"solar
-array current is 0.602 A, significantly lower than the expected 2.27 A … in 100% sunlight."* The
-remaining Gemini runs are limited by the free tier's 20 requests per day.
+**How to read this:**
+- The naive rules blame the part the first alarming sensor describes, so they fail exactly when the cause sits elsewhere.
+- Gemini's evidence quoted the data. On the solar loss, for example: *"solar array current is 0.602 A, significantly lower than the expected 2.27 A … in 100% sunlight."*
+- Gemini's one miss is the stuck heater, which it blamed on the sensor that controls the heater instead of the heater itself.
+- Each scenario was run once on the free tier, which allows 20 requests a day.
 
 ## Deployment
 
