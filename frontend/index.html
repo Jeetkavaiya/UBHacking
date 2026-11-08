@@ -77,6 +77,19 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; pa
   border-radius: 6px; background: rgba(6,10,18,.75); border: 1px solid var(--line-2); white-space: nowrap;
   pointer-events: auto; cursor: pointer; transition: border-color .2s; }
 .nlabel.sel { border-color: var(--accent); color: var(--accent); }
+.rlabel { position: absolute; transform: translate(-50%, 35%); font: 600 10px var(--mono); letter-spacing: .04em;
+  padding: 2px 9px; border-radius: 999px; background: rgba(6,10,18,.85); border: 1px solid var(--c, var(--line-2));
+  color: var(--c, var(--muted)); white-space: nowrap; pointer-events: none; display: flex; align-items: center; gap: 6px; }
+.rlabel i { width: 6px; height: 6px; border-radius: 50%; background: var(--c, var(--muted)); box-shadow: 0 0 8px var(--c, transparent); }
+/* caption under the core: "Gemini analyzing" / "Root cause: ..." */
+.corelabel { position: absolute; transform: translate(-50%, 0); font: 700 11px var(--mono); letter-spacing: .12em;
+  text-transform: uppercase; padding: 5px 13px; border-radius: 999px; background: rgba(14,9,32,.88);
+  border: 1px solid #9b6bff; color: #dccbff; box-shadow: 0 0 22px -4px #9b6bff; pointer-events: none;
+  white-space: nowrap; z-index: 3; }
+.corelabel.ok { border-color: var(--ok); color: #c9f7e3; box-shadow: 0 0 22px -4px var(--ok); }
+.corelabel.warn { border-color: var(--warn); color: #ffe2b5; box-shadow: 0 0 22px -4px var(--warn); }
+.corelabel.think::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 9px;
+  border-radius: 50%; background: #b18cff; vertical-align: 1px; animation: blink .7s infinite; }
 .nlabel.alert { border-color: var(--bad); color: #fff; background: rgba(80,10,20,.85); }
 .scene-legend { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: var(--muted);
   display: flex; gap: 12px; flex-wrap: wrap; pointer-events: none; }
@@ -129,6 +142,14 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; pa
 .badge.nasa { color: var(--nasa); border-color: color-mix(in srgb, var(--nasa) 55%, transparent); }
 .badge.ai { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
 @keyframes blink { 50% { opacity: .45; } }
+/* urgent cards (veto window / approval): animated glowing border */
+@property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes spinb { to { --ang: 360deg; } }
+.inc.urgent { border: 1px solid transparent; border-left-width: 3px;
+  background: linear-gradient(var(--panel-2), var(--panel-2)) padding-box,
+    conic-gradient(from var(--ang), var(--warn), rgba(255,92,108,.12) 25%, var(--bad) 50%, rgba(255,181,71,.12) 75%, var(--warn)) border-box;
+  box-shadow: 0 0 28px -10px var(--warn); animation: slidein .3s ease, spinb 2.6s linear infinite; }
+.caret { color: var(--accent); animation: blink .8s infinite; }
 .inc .cause { margin: 8px 0 6px; font-size: 13px; }
 .inc .meta { font: 11px var(--mono); color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
 .inc .act { margin-top: 8px; padding: 8px; border-radius: 6px; background: rgba(76,201,240,.06);
@@ -246,12 +267,13 @@ footer { padding: 12px 16px 90px; font-size: 11px; color: var(--muted);
     <section class="panel" id="scenePanel" aria-label="3D telemetry view">
       <div id="scene"></div>
       <div id="labels"></div>
+      <div id="coreLabel" class="corelabel" style="display:none"></div>
       <div class="scene-title">Live constellation · drag to rotate · click a channel</div>
       <div class="scene-legend">
         <span><i style="background:var(--ok)"></i>nominal</span>
         <span><i style="background:var(--warn)"></i>elevated</span>
         <span><i style="background:var(--bad)"></i>anomaly</span>
-        <span id="ringLegend">rings: SMAP · MSL · SIM-1</span>
+        <span id="ringLegend">each ring is one spacecraft</span>
       </div>
     </section>
 
@@ -342,6 +364,7 @@ const S = {
   selected: null, threshold: 4, vetoSeconds: 30, clockOffset: 0,
   speed: 1, voiceOn: false, stuck: {}, dataMode: "…",
   mode: "both", sim: null, scenarios: [], parts: {}, simDrawn: 0,
+  typed: {}, geminiOn: false, // typed = characters of each diagnosis revealed so far (typewriter)
 };
 const KINDS = { nasa: ["nasa"], sim: ["sim"], both: ["nasa", "sim"] };
 const activeKind = (cid) => (KINDS[S.mode] || KINDS.both).includes(S.channels[cid]?.kind || "nasa");
@@ -573,6 +596,31 @@ function aiBadge(d) {
   return `<span class="badge ${g ? "ai" : ""}" title="${esc(d.source)}">${g ? "Gemini" : "Rule-based"}</span>`;
 }
 
+// Typewriter: a new diagnosis is revealed a few characters at a time (S.typed holds progress, so
+// re-rendering a card mid-way continues where it was). Incidents loaded on connect show in full.
+function typedHTML(inc) {
+  const full = inc.diagnosis?.likely_cause || "";
+  const n = Math.min(S.typed[inc.id] ?? Infinity, full.length);
+  return esc(full.slice(0, n)) + (n < full.length ? '<span class="caret">▍</span>' : "");
+}
+setInterval(() => {
+  for (const [id, n] of Object.entries(S.typed)) {
+    const inc = S.incidents[id], full = inc?.diagnosis?.likely_cause || "";
+    if (n >= full.length) continue;
+    S.typed[id] = Math.min(full.length, n + 3);
+    const el = document.querySelector(`[data-type="${CSS.escape(id)}"]`);
+    if (el) el.innerHTML = typedHTML(inc);
+  }
+}, 28);
+
+// SIM-1 part -> the sensor node that best shows it in 3D (target of the root-cause beam).
+const PART_NODE = { solar_array: "SOLAR_I", battery: "BATT_V", power_bus: "LOAD_P", payload: "LOAD_P",
+  heater: "BATT_T", battery_temp_sensor: "BATT_T", reaction_wheel: "WHEEL_I", star_tracker: "POINT_ERR", radio: "TX_T" };
+function nodeFor(inc, part) {
+  const n = inc.kind === "sim" && part && part !== "none" ? PART_NODE[part] : null;
+  return n && S.channels[n] ? n : inc.channel;
+}
+
 function incCard(inc) {
   const d = inc.diagnosis, sev = d?.severity || "";
   const urgent = inc.status === "veto_window" || inc.status === "awaiting_approval";
@@ -615,14 +663,14 @@ function incCard(inc) {
     }
   }
   const title = sim ? `${inc.name || inc.channel} · ${inc.shape || "anomaly"}` : `${inc.channel} · ${inc.shape || "anomaly"}`;
-  return `<div class="inc sev-${esc(sev)} ${inc.status === "closed" ? "closed" : ""}" data-inc="${esc(inc.id)}">
+  return `<div class="inc sev-${esc(sev)} ${inc.status === "closed" ? "closed" : ""} ${urgent ? "urgent" : ""}" data-inc="${esc(inc.id)}">
     <div class="row"><span class="title">${esc(title)}</span>
       <span class="badge status ${urgent ? "urgent" : ""}">${esc(STATUS[inc.status] || inc.status)}</span>
       <span class="time">${esc(inc.id)} · ${fmtTime(inc.opened_at)}</span></div>
     <div class="row" style="margin-top:6px">${tagBadge(inc)}${aiBadge(d)}
       ${sev ? `<span class="badge">${esc(sev)} severity</span>` : ""}
       ${inc.tier ? `<span class="badge">tier ${inc.tier}</span>` : ""}</div>
-    ${d ? `<div class="cause">${esc(d.likely_cause)}</div>` : ""}
+    ${d ? `<div class="cause" data-type="${esc(inc.id)}">${typedHTML(inc)}</div>` : ""}
     ${simInfo}
     <div class="meta"><span>${esc(inc.subsystem)} · ${esc(inc.spacecraft)}</span><span>peak surprise ${Number(inc.peak_surprise || 0).toFixed(1)}</span>
       ${d ? `<span>confidence ${esc(d.confidence)}</span>` : ""}</div>
@@ -856,6 +904,7 @@ async function pollHealth() {
     S.dataMode = h.data_mode;
     $("#chipData").innerHTML = `data <b>${esc(h.data_mode === "real" ? "real NASA" : "SIMULATED")}</b>`;
     const g = h.gemini || {};
+    S.geminiOn = !!g.enabled;
     const used = g.daily_used ?? 0, lim = g.daily_limit;
     setChip("#chipGemini", g.enabled, g.enabled ? `Gemini <b>${used}/${lim ?? "∞"}</b> today` : "Gemini <b>off · rules</b>",
       g.enabled && lim && used >= lim - 2);
@@ -876,6 +925,14 @@ const Scene3D = (() => {
   let renderer, scene, camera, root, core, coreGlow, raycaster, pointer, selected = null;
   let dragging = false, lastX = 0, lastY = 0, rotY = 0, rotX = 0.1, velY = 0.0015, idleFor = 99;
   const host = document.getElementById("scene"), labels = document.getElementById("labels");
+  // Cinematic effects: fly-in, incident focus, shockwaves, root-cause beams, AI "thinking", data packets.
+  const coreLabel = document.getElementById("coreLabel");
+  const TAU = Math.PI * 2, INTRO = 2.8;
+  const angDiff = (a, b) => ((((a - b) % TAU) + TAU + Math.PI) % TAU) - Math.PI;
+  const easeOut = (p) => 1 - Math.pow(1 - Math.min(Math.max(p, 0), 1), 3);
+  let basePos, baseLook, curLook, introFrom, introStart = -1, VIOLET;
+  let swarm = null, packets = null, packetTex = null, thinking = 0, focus = null, lastFocusAt = -99, coreMsg = null;
+  const waves = [], zaps = [];
 
   function ok() { return !!window.THREE; }
 
@@ -912,10 +969,24 @@ const Scene3D = (() => {
     coreGlow = new THREE.Mesh(new THREE.SphereGeometry(0.75, 32, 32),
       new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0.85 }));
     root.add(core, coreGlow);
+    VIOLET = new THREE.Color(0x9b6bff);
+
+    // The AI "thinking": a violet swarm around the core, visible while the flight director analyzes.
+    packetTex = dotTexture();
+    const sw = [];
+    for (let k = 0; k < 240; k++) {
+      const r = 1.9 + Math.random() * 1.0, th = Math.random() * TAU, ph = Math.acos(2 * Math.random() - 1);
+      sw.push(r * Math.sin(ph) * Math.cos(th), r * Math.cos(ph) * 0.6, r * Math.sin(ph) * Math.sin(th));
+    }
+    const swg = new THREE.BufferGeometry();
+    swg.setAttribute("position", new THREE.Float32BufferAttribute(sw, 3));
+    swarm = new THREE.Points(swg, new THREE.PointsMaterial({ color: 0xb18cff, size: 0.26, map: packetTex, transparent: true,
+      opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+    root.add(swarm);
 
     raycaster = new THREE.Raycaster(); pointer = new THREE.Vector2();
     const cv = renderer.domElement;
-    cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; idleFor = 0; cv.setPointerCapture(e.pointerId); cv._moved = 0; });
+    cv.addEventListener("pointerdown", (e) => { focus = null; dragging = true; lastX = e.clientX; lastY = e.clientY; idleFor = 0; cv.setPointerCapture(e.pointerId); cv._moved = 0; });
     cv.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
@@ -935,9 +1006,21 @@ const Scene3D = (() => {
     renderer.domElement.style.width = w + "px"; renderer.domElement.style.height = h + "px";
     camera.aspect = w / Math.max(h, 1);
     const dist = w < 600 ? 24 : 17.5; // elevated view so every orbit reads as a ring
-    camera.position.set(0, dist * 0.42, dist);
-    camera.lookAt(0, -0.6, 0);
+    basePos = new THREE.Vector3(0, dist * 0.42, dist);
+    baseLook = new THREE.Vector3(0, -0.6, 0);
+    introFrom = new THREE.Vector3(-dist * 0.9, dist * 1.6, dist * 2.4); // fly-in starts far out in space
+    if (!curLook) { curLook = baseLook.clone(); camera.position.copy(introFrom); }
+    camera.lookAt(curLook);
     camera.updateProjectionMatrix();
+  }
+
+  function dotTexture() { // soft round glow used for particles
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d"), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(0.35, "rgba(255,255,255,.55)"); grd.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
   }
 
   function pick(e) {
@@ -948,12 +1031,21 @@ const Scene3D = (() => {
     if (hit) select(hit.object.userData.cid);
   }
 
+  // Which spacecraft each ring belongs to: a colored ring plus a tag that orbits in a gap between
+  // two of the ring's own nodes, so its own channel labels never cover it.
+  const CRAFT = {
+    SMAP: { text: "SMAP satellite · NASA", color: 0x2f6bc4, css: "#5b9bff" },
+    MSL: { text: "Curiosity rover · NASA", color: 0xa8582f, css: "#ff9a5c" },
+    "SIM-1": { text: "SIM-1 · simulated", color: 0x6b48a3, css: "#c792ea" },
+    SIMULATED: { text: "Synthetic channels", color: 0x26385a, css: "#7f8ea8" },
+  };
   let rings = [];
   function build(order, channels) {
     for (const n of Object.values(nodes)) { root.remove(n.group); root.remove(n.beam); n.label.remove(); }
     for (const k of Object.keys(nodes)) delete nodes[k];
-    for (const r of rings) root.remove(r);
+    for (const r of rings) root.remove(r.mesh);
     rings = [];
+    clearFx();
     labels.innerHTML = "";
     if (!ok() || !root) return;
     const crafts = {};
@@ -964,11 +1056,18 @@ const Scene3D = (() => {
     names.forEach((craft, ri) => {
       const list = crafts[craft], radius = RADII[Math.min(ri, RADII.length - 1)];
       const sim = channels[list[0]].kind === "sim";
-      const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.015, radius + 0.015, 180),
-        new THREE.MeshBasicMaterial({ color: sim ? 0x5a3d7a : 0x26385a, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+      const info = CRAFT[craft] || { text: craft, color: 0x26385a, css: "#7f8ea8" };
+      const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.02, radius + 0.02, 180),
+        new THREE.MeshBasicMaterial({ color: info.color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 }));
       ring.rotation.x = Math.PI / 2;
-      ring.userData.kind = sim ? "sim" : "nasa";
-      root.add(ring); rings.push(ring);
+      root.add(ring);
+      const tag = document.createElement("div");
+      tag.className = "rlabel";
+      tag.style.setProperty("--c", info.css);
+      tag.innerHTML = `<i></i>${esc(info.text)}`;
+      labels.appendChild(tag); // added before the node labels, so channel labels draw on top
+      // Midway between node 0 and node 1 of this ring (nodes sit at k/len of a turn, offset by ri * 0.4).
+      rings.push({ mesh: ring, label: tag, radius, kind: sim ? "sim" : "nasa", angle: ri * 0.4 + Math.PI / list.length });
       list.forEach((cid, k) => {
         const a = (k / list.length) * Math.PI * 2 + ri * 0.4;
         const g = new THREE.Group();
@@ -989,9 +1088,160 @@ const Scene3D = (() => {
         label.className = "nlabel"; label.textContent = cid;
         label.onclick = () => select(cid);
         labels.appendChild(label);
-        nodes[cid] = { group: g, mesh, mat, halo, selRing, beam, label, cur: new THREE.Color(0x3ddc97) };
+        nodes[cid] = { group: g, mesh, mat, halo, selRing, beam, label, cur: new THREE.Color(0x3ddc97), angle: a, alert: false };
       });
     });
+    buildPackets();
+  }
+
+  // ---------- effects ----------
+  function clearFx() {
+    for (const wv of waves) wv.parent.remove(wv.m);
+    for (const z of zaps) { root.remove(z.beam); root.remove(z.dot); }
+    waves.length = 0; zaps.length = 0; focus = null;
+  }
+
+  // Telemetry packets: two glowing particles per sensor stream along its beam into the core.
+  function buildPackets() {
+    if (packets) { root.remove(packets); packets.geometry.dispose(); }
+    const ids = Object.keys(nodes), P = ids.length * 2;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(P * 3), 3));
+    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(P * 3), 3));
+    packets = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.4, map: packetTex, vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending }));
+    packets.userData.ids = ids;
+    packets.frustumCulled = false;
+    root.add(packets);
+  }
+
+  function updatePackets(t) {
+    if (!packets) return;
+    const ids = packets.userData.ids, pos = packets.geometry.attributes.position, col = packets.geometry.attributes.color;
+    const rate = 0.28 + 0.1 * Math.log2(1 + (S.speed || 1));
+    ids.forEach((cid, i) => {
+      const n = nodes[cid], p = n.group.position, on = n.group.visible;
+      for (let j = 0; j < 2; j++) {
+        const k = i * 2 + j, u = (t * rate + j * 0.5 + i * 0.137) % 1, b = on ? Math.sin(u * Math.PI) : 0;
+        pos.setXYZ(k, p.x * (1 - u), p.y * (1 - u), p.z * (1 - u));
+        if (n.alert) col.setXYZ(k, b, 0.32 * b, 0.38 * b); else col.setXYZ(k, 0.25 * b, 0.75 * b, 0.95 * b);
+      }
+    });
+    pos.needsUpdate = true; col.needsUpdate = true;
+  }
+
+  // Shockwave: three rings expand from a node (red = alarm, amber = symptom, green = recovered).
+  function wave(cid, color, size = 1) {
+    const n = nodes[cid];
+    if (!n || !n.group.visible) return;
+    const now = performance.now() / 1000;
+    for (let i = 0; i < 3; i++) {
+      const m = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 64), new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+      n.group.add(m);
+      waves.push({ m, parent: n.group, start: now + i * 0.28, life: 1.5, size });
+    }
+  }
+
+  // Energy beam from the core (the flight director) to a node, with a bright pulse riding along it.
+  function zap(cid, color) {
+    const n = nodes[cid];
+    if (!n || !n.group.visible) return;
+    const end = n.group.position.clone(), L = end.length();
+    const geo = new THREE.CylinderGeometry(0.07, 0.07, L, 12, 1, true);
+    geo.translate(0, L / 2, 0);
+    const beam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false,
+      blending: THREE.AdditiveBlending }));
+    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().normalize());
+    beam.scale.y = 0.001;
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff,
+      transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending }));
+    root.add(beam, dot);
+    zaps.push({ beam, dot, end, cid, color, start: performance.now() / 1000, hit: false });
+  }
+
+  function updateFx(t) {
+    for (let i = waves.length - 1; i >= 0; i--) {
+      const wv = waves[i], age = t - wv.start;
+      if (age < 0) continue;
+      const p = age / wv.life;
+      if (p >= 1) { wv.parent.remove(wv.m); wv.m.geometry.dispose(); wv.m.material.dispose(); waves.splice(i, 1); continue; }
+      wv.m.scale.setScalar(1 + p * 6 * wv.size);
+      wv.m.material.opacity = Math.pow(1 - p, 1.6) * 0.95;
+      wv.m.lookAt(camera.position);
+    }
+    for (let i = zaps.length - 1; i >= 0; i--) {
+      const z = zaps[i], age = t - z.start, grow = easeOut(age / 0.6);
+      z.beam.scale.y = Math.max(grow, 0.001);
+      z.dot.position.copy(z.end).multiplyScalar(grow);
+      z.beam.material.opacity = 0.9 * (age < 1.9 ? 1 : Math.max(0, 1 - (age - 1.9)));
+      z.dot.material.opacity = age < 0.6 ? 1 : Math.max(0, 1 - (age - 0.6) / 0.4);
+      if (!z.hit && age >= 0.6) { z.hit = true; wave(z.cid, z.color, 0.9); }
+      if (age > 3) {
+        root.remove(z.beam); root.remove(z.dot);
+        z.beam.geometry.dispose(); z.beam.material.dispose(); z.dot.geometry.dispose(); z.dot.material.dispose();
+        zaps.splice(i, 1);
+      }
+    }
+  }
+
+  // Caption under the core: "Gemini analyzing" while thinking, then the root cause for a few seconds.
+  function updateCoreLabel(t, w, h, v) {
+    if (!coreLabel) return;
+    let text = null, cls = "";
+    if (coreMsg && t < coreMsg.until) ({ text, cls } = coreMsg);
+    else if (thinking > 0.4) { text = S.geminiOn ? "Gemini analyzing" : "Flight director analyzing"; cls = "think"; }
+    if (!text) { coreLabel.style.display = "none"; return; }
+    v.set(0, 0, 0).applyMatrix4(root.matrixWorld).project(camera);
+    coreLabel.style.display = "";
+    if (coreLabel.textContent !== text) coreLabel.textContent = text;
+    coreLabel.className = `corelabel ${cls}`;
+    coreLabel.style.left = `${(v.x * 0.5 + 0.5) * w}px`;
+    coreLabel.style.top = `${(-v.y * 0.5 + 0.5) * h + 46}px`;
+  }
+
+  function setFocus(cid, secs) {
+    const now = performance.now() / 1000;
+    if (!nodes[cid] || !activeKind(cid) || dragging) return;
+    if (focus && focus.cid !== cid && now - lastFocusAt < 3) return; // don't ping-pong between incidents
+    focus = { cid, until: now + secs };
+    lastFocusAt = now;
+  }
+
+  // Incident steps from the server drive the effects.
+  function onEvent(ev, inc) {
+    if (!root || !ev || !inc) return;
+    const now = performance.now() / 1000, d = inc.diagnosis || {};
+    switch (ev.kind) {
+      case "anomaly_detected":
+        wave(inc.channel, 0xff5c6c, 1.2); setFocus(inc.channel, 9); break;
+      case "symptom": {
+        const s = (inc.symptoms || [])[(inc.symptoms || []).length - 1];
+        if (s) wave(s.channel, 0xffb547, 0.8);
+        break;
+      }
+      case "diagnosis": {
+        const none = d.root_cause === "none", target = nodeFor(inc, d.root_cause);
+        zap(target, none ? 0x3ddc97 : inc.kind === "sim" ? 0xb18cff : 0x4cc9f0);
+        setFocus(target, 7);
+        const text = inc.kind === "sim" && d.root_cause
+          ? (none ? "No part failed" : `Root cause: ${partName(d.root_cause)}`)
+          : `${inc.shape || "anomaly"} on ${inc.channel}`;
+        coreMsg = { text, cls: none ? "ok" : "", until: now + 5 };
+        break;
+      }
+      case "plan_b":
+        zap(nodeFor(inc, inc.target), 0xffb547); coreMsg = { text: "Plan B", cls: "warn", until: now + 3 }; break;
+      case "action_taken":
+        if (inc.action && inc.action !== "monitor") zap(nodeFor(inc, inc.target), 0x4cc9f0);
+        break;
+      case "closed":
+        wave(inc.channel, 0x3ddc97, 1.0);
+        if (focus && (focus.cid === inc.channel || (inc.symptoms || []).some((s) => s.channel === focus.cid))) focus = null;
+        break;
+      case "escalated":
+        wave(inc.channel, 0xffb547, 0.9); break;
+    }
   }
 
   const cOk = () => new THREE.Color(0x3ddc97), cWarn = () => new THREE.Color(0xffb547), cBad = () => new THREE.Color(0xff5c6c);
@@ -999,22 +1249,52 @@ const Scene3D = (() => {
   function frame(t, dt) {
     if (!renderer) return;
     idleFor += dt;
-    if (!dragging) { rotY += velY; velY += ((idleFor > 3 ? 0.0015 : 0) - velY) * 0.02; }
-    root.rotation.y = rotY; root.rotation.x = rotX * 0.6;
-    core.rotation.y += dt * 0.25; core.rotation.x += dt * 0.1;
+    // Fly-in on load: the camera swoops in from deep space while the constellation swirls into place.
+    if (introStart < 0) introStart = t;
+    const ip = Math.min((t - introStart) / INTRO, 1), intro = easeOut(ip);
+    if (focus && (t > focus.until || !nodes[focus.cid] || !activeKind(focus.cid))) focus = null;
+    if (focus) rotY += angDiff(nodes[focus.cid].angle - Math.PI / 2, rotY) * Math.min(1, dt * 1.5); // swing it to the front
+    else if (!dragging) { rotY += velY; velY += ((idleFor > 3 ? 0.0015 : 0) - velY) * 0.02; }
+    root.rotation.y = rotY + (1 - intro) * 1.8; root.rotation.x = rotX * 0.6;
+    // The AI "thinking": the core spins up and a violet swarm gathers while the flight director analyzes.
+    const analyzing = Object.values(S.incidents).some((i) => i.status === "analyzing");
+    thinking += ((analyzing ? 1 : 0) - thinking) * Math.min(1, dt * 3);
+    core.rotation.y += dt * (0.25 + thinking * 2.4); core.rotation.x += dt * (0.1 + thinking * 0.9);
+    swarm.material.opacity = thinking * 0.95;
+    swarm.rotation.y += dt * (0.3 + thinking * 2.6);
+    swarm.rotation.z = Math.sin(t * 0.8) * 0.35 * thinking;
+    swarm.scale.setScalar(0.8 + thinking * 0.3 + Math.sin(t * 3) * 0.05 * thinking);
     let anyAlert = false;
     const w = host.clientWidth, h = host.clientHeight, v = new THREE.Vector3();
-    for (const r of rings) r.visible = (KINDS[S.mode] || KINDS.both).includes(r.userData.kind);
+    root.updateMatrixWorld();
+    // Camera rig: glide toward the node an incident is about, then ease back to the overview.
+    const tgtPos = basePos.clone(), tgtLook = baseLook.clone();
+    if (focus) { nodes[focus.cid].group.getWorldPosition(v); tgtLook.lerp(v, 0.8); tgtPos.lerp(v, 0.22); tgtPos.y += 2.4; }
+    const ease = 1 - Math.exp(-dt * 2.2);
+    if (ip < 1) camera.position.copy(introFrom).lerp(tgtPos, intro);
+    else camera.position.lerp(tgtPos, ease);
+    curLook.lerp(tgtLook, ease);
+    camera.lookAt(curLook);
+    camera.updateMatrixWorld();
+    for (const r of rings) {
+      const on = (KINDS[S.mode] || KINDS.both).includes(r.kind);
+      r.mesh.visible = on;
+      if (!on) { r.label.style.display = "none"; continue; }
+      v.set(Math.cos(r.angle) * r.radius, 0, Math.sin(r.angle) * r.radius).applyMatrix4(root.matrixWorld).project(camera);
+      r.label.style.display = v.z < 1 ? "" : "none";
+      r.label.style.left = `${(v.x * 0.5 + 0.5) * w}px`; r.label.style.top = `${(-v.y * 0.5 + 0.5) * h}px`;
+    }
     for (const [cid, n] of Object.entries(nodes)) {
       const on = activeKind(cid);
       n.group.visible = on; n.beam.visible = on;
-      if (!on) { n.label.style.display = "none"; continue; }
+      if (!on) { n.label.style.display = "none"; n.alert = false; continue; }
       const s = lastSurprise(cid), r = Math.min(s / S.threshold, 1.5);
       const target = r < 0.5 ? cOk().lerp(cWarn(), r / 0.5) : r < 1 ? cWarn().lerp(cBad(), (r - 0.5) / 0.5) : cBad();
       n.cur.lerp(target, 0.15);
       n.mat.color.copy(n.cur); n.mat.emissive.copy(n.cur);
       const inc = openIncidentFor(cid), alert = !!inc;
       anyAlert ||= alert;
+      n.alert = alert;
       n.mat.emissiveIntensity = 0.5 + Math.min(r, 1.2) * 0.9;
       n.mesh.scale.setScalar(1 + Math.min(r, 1.5) * 0.35 + (alert ? Math.sin(t * 6) * 0.08 : 0));
       const ph = (t * 0.9) % 1;
@@ -1032,14 +1312,19 @@ const Scene3D = (() => {
       n.label.classList.toggle("sel", cid === selected);
       n.label.classList.toggle("alert", alert);
     }
-    coreGlow.material.color.set(anyAlert ? 0xff5c6c : 0x4cc9f0);
-    core.material.color.set(anyAlert ? 0xff8a95 : 0x4cc9f0);
-    const pulse = 1 + Math.sin(t * (anyAlert ? 5 : 1.6)) * (anyAlert ? 0.12 : 0.05);
-    coreGlow.scale.setScalar(pulse);
+    updatePackets(t);
+    updateFx(t);
+    updateCoreLabel(t, w, h, v);
+    // Core color: cyan when calm, red while an incident is open, violet while the AI is thinking.
+    coreGlow.material.color.set(anyAlert ? 0xff5c6c : 0x4cc9f0).lerp(VIOLET, thinking);
+    core.material.color.set(anyAlert ? 0xff8a95 : 0x4cc9f0).lerp(VIOLET, thinking);
+    const busy = anyAlert || thinking > 0.3;
+    const pulse = 1 + Math.sin(t * (busy ? 5 : 1.6)) * (busy ? 0.12 : 0.05);
+    coreGlow.scale.setScalar(pulse * (1 + thinking * 0.18));
     renderer.render(scene, camera);
   }
 
-  return { init, build, frame, setSelected: (cid) => { selected = cid; } };
+  return { init, build, frame, onEvent, setSelected: (cid) => { selected = cid; } };
 })();
 
 // =====================================================================
@@ -1065,7 +1350,9 @@ function connect() {
       if (m.sim) renderSim(m.sim);
     } else if (m.type === "event") {
       addLog(m.event);
+      if (m.incident?.diagnosis && S.typed[m.incident.id] === undefined) S.typed[m.incident.id] = 0; // start typing
       if (m.incident) upsertIncident(m.incident);
+      Scene3D.onEvent(m.event, m.incident);
       if (m.incident?.kind === "sim" || m.event.kind === "scenario_started") refreshScore();
     } else if (m.type === "voice") {
       Voice.add(m);
@@ -1087,6 +1374,7 @@ async function onHello(m) {
   S.incidents = {};
   try { for (const inc of await api("/api/incidents?limit=20")) S.incidents[inc.id] = inc; } catch { /* ok */ }
   for (const inc of m.incidents || []) S.incidents[inc.id] = inc;
+  for (const inc of Object.values(S.incidents)) if (inc.diagnosis) S.typed[inc.id] = Infinity; // already happened: no typing
   try { for (const c of await api("/api/channels")) S.stuck[c.id] = c.detector?.stuck_check; } catch { /* ok */ }
   $("#log").innerHTML = "";
   for (const ev of m.log || []) addLog(ev, false);
