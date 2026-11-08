@@ -167,7 +167,7 @@ async def health():
         "open_incidents": len(A.manager.open_incidents()),
         "gemini": {"enabled": A.agent.enabled, "model": S.gemini_model if A.agent.enabled else None,
                    **A.agent.stats, **A.agent.quota()},
-        "voice": {"enabled": A.voice.enabled, **A.voice.stats},
+        "voice": {"enabled": A.voice.enabled, "model": S.elevenlabs_model, **A.voice.stats},
         "storage": {"mode": A.storage.mode, "timescale": A.storage.timescale, **A.storage.stats},
     }
 

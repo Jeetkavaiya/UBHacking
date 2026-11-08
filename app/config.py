@@ -16,6 +16,11 @@ def _i(name: str, default: int) -> int:
     return int(os.getenv(name, default))
 
 
+def _s(name: str, default: str = "") -> str:
+    """String setting; tolerates values pasted with quotes or spaces into a host's env form."""
+    return os.getenv(name, "").strip().strip("'\"").strip() or default
+
+
 def _list(name: str) -> list[str]:
     return [x.strip() for x in os.getenv(name, "").split(",") if x.strip()]
 
@@ -74,9 +79,9 @@ class Settings:
     gemini_daily_limit: int = _i("GEMINI_DAILY_LIMIT", 18)
 
     # ElevenLabs
-    elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
-    elevenlabs_voice_id: str = os.getenv("ELEVENLABS_VOICE_ID", "")
-    elevenlabs_model: str = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")
+    elevenlabs_api_key: str = _s("ELEVENLABS_API_KEY")
+    elevenlabs_voice_id: str = _s("ELEVENLABS_VOICE_ID")
+    elevenlabs_model: str = _s("ELEVENLABS_MODEL", "eleven_flash_v2_5")
 
     # Storage (Tiger Data / PostgreSQL). Empty = in-memory only.
     database_url: str = os.getenv("DATABASE_URL", "")

@@ -54,12 +54,17 @@ class Voice:
                 headers={"xi-api-key": self.key, "Accept": "audio/mpeg"},
                 json={"text": text, "model_id": self.model},
             )
-            r.raise_for_status()
+            if r.status_code != 200:  # say WHY (ElevenLabs explains in the body; never logs the key)
+                self.stats["failures"] += 1
+                self.stats["last_error"] = f"{r.status_code}: {r.text[:200]}"
+                log.warning("ElevenLabs %s (model %s): %s; caption only.", r.status_code, self.model, r.text[:300])
+                return None
             path.write_bytes(r.content)
             self.stats["generated"] += 1
             return f"/audio/{name}"
         except Exception as e:
             self.stats["failures"] += 1
+            self.stats["last_error"] = str(e)[:200]
             log.warning("ElevenLabs failed (%s); caption only.", e)
             return None
 
