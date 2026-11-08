@@ -14,6 +14,7 @@ import numpy as np
 from .config import Settings
 from .data import Channel
 from .detector import BaselineDetector, Result
+from .forecast import EnsembleDetector, ForecastDetector
 from .sim import Satellite, sim_channels
 
 log = logging.getLogger(__name__)
@@ -63,10 +64,16 @@ class Engine:
         chans = list(channels) + (sim_channels() if sim else [])
         self.states = {}
         for c in chans:
-            k = s.sim_consecutive if c.kind == "sim" else s.consecutive
-            train = c.to_det(c.train) if c.kind == "sim" else c.train
-            self.states[c.id] = ChannelState(c, BaselineDetector(
-                train, s.z_threshold, k, s.still_window, s.envelope_margin))
+            if c.kind == "sim":  # SIM-1 keeps the baseline (0 false alarms in 18 healthy test orbits)
+                det = BaselineDetector(c.to_det(c.train), s.z_threshold, s.sim_consecutive,
+                                       s.still_window, s.envelope_margin)
+            elif s.detector in ("forecast", "ensemble"):  # NASA: learned forecaster (scripts/evaluate.py)
+                cls = EnsembleDetector if s.detector == "ensemble" else ForecastDetector
+                det = cls(c.train, s.z_threshold, s.consecutive, s.still_window,
+                          s.envelope_margin, min_peak=s.min_peak)
+            else:
+                det = BaselineDetector(c.train, s.z_threshold, s.consecutive, s.still_window, s.envelope_margin)
+            self.states[c.id] = ChannelState(c, det)
         self.active: set[str] = {"nasa", "sim"}
         self.set_mode(s.mode)
         self.speed = 1.0

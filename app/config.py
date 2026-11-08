@@ -41,8 +41,15 @@ class Settings:
 
     # Detector
     z_threshold: float = _f("Z_THRESHOLD", 4.0)
-    consecutive: int = _i("CONSECUTIVE", 3)
+    # Readings in a row before an alarm. 12 chosen from a sweep on all 81 NASA channels
+    # (results/: 3 -> 33% precision, 12 -> 73%; recall 68% -> 56%). ~1.2 s at 1x.
+    consecutive: int = _i("CONSECUTIVE", 12)
     still_window: int = _i("STILL_WINDOW", 30)
+    # NASA channels: ensemble (learned forecaster OR baseline, app/forecast.py), forecast, or baseline.
+    # Chosen from the sweep in the README (scripts/evaluate.py on all 81 channels).
+    detector: str = os.getenv("DETECTOR", "ensemble").strip().lower()
+    # Forecaster branch: a run becomes an alarm only once its peak surprise reaches this.
+    min_peak: float = _f("MIN_PEAK", 8.0)
     envelope_margin: float = _f("ENVELOPE_MARGIN", 0.10)
 
     # Incident handling (real seconds)

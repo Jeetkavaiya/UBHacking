@@ -29,9 +29,15 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.config import settings  # noqa: E402
 from app.detector import BaselineDetector  # noqa: E402
+from app.forecast import EnsembleDetector, ForecastDetector  # noqa: E402
 
 TELEMANOM_REFERENCE = {"precision": 0.875, "recall": 0.800,
                        "source": "Hundman et al., KDD 2018 (LSTM + nonparametric thresholding, SMAP+MSL)"}
+
+
+def prune(seqs: list[tuple[int, int]], surprise: np.ndarray, min_peak: float) -> list[tuple[int, int]]:
+    """Telemanom-style pruning: keep a flagged run only if its peak surprise clearly exceeds noise."""
+    return [s for s in seqs if surprise[s[0]:s[1] + 1].max() >= min_peak] if min_peak > 0 else seqs
 
 
 def predicted_sequences(flags: np.ndarray, merge: int) -> list[tuple[int, int]]:
@@ -53,12 +59,23 @@ def overlaps(a: tuple[int, int], b: tuple[int, int]) -> bool:
 
 
 def evaluate_channel(cid: str, data: Path, labels: list[tuple[int, int]], z: float, k: int,
-                     still: int, margin: float, merge: int) -> dict:
-    train = np.load(data / "train" / f"{cid}.npy")[:, 0].astype(float)
-    test = np.load(data / "test" / f"{cid}.npy")[:, 0].astype(float)
-    det = BaselineDetector(train, z, k, still, margin)
-    flags = np.fromiter((det.update(float(v)).flagged for v in test), dtype=bool, count=len(test))
-    pred = predicted_sequences(flags, merge)
+                     still: int, margin: float, merge: int, detector: str = "baseline",
+                     commands: bool = False, min_peak: float = 0.0, live_peak: float = 0.0) -> dict:
+    tr = np.load(data / "train" / f"{cid}.npy")
+    te = np.load(data / "test" / f"{cid}.npy")
+    train, test = tr[:, 0].astype(float), te[:, 0].astype(float)
+    if detector in ("forecast", "ensemble"):
+        ctr = tr[:, 1:].astype(float) if commands else None
+        cte = te[:, 1:].astype(float) if commands else None
+        cls = EnsembleDetector if detector == "ensemble" else ForecastDetector
+        det = cls(train, z, k, still, margin, train_cmds=ctr, min_peak=live_peak)
+        res = [det.update(float(v), cte[i] if commands else None) for i, v in enumerate(test)]
+    else:
+        det = BaselineDetector(train, z, k, still, margin)
+        res = [det.update(float(v)) for v in test]
+    flags = np.array([r.flagged for r in res], dtype=bool)
+    surprise = np.array([r.surprise for r in res], dtype=float)
+    pred = prune(predicted_sequences(flags, merge), surprise, min_peak)
     tp = sum(1 for lab in labels if any(overlaps(lab, p) for p in pred))
     fp = sum(1 for p in pred if not any(overlaps(lab, p) for lab in labels))
     return {"channel": cid, "length": len(test), "labeled": len(labels), "predicted": len(pred),
@@ -81,8 +98,16 @@ def main() -> None:
     ap.add_argument("--z", type=float, default=settings.z_threshold)
     ap.add_argument("--consecutive", type=int, default=settings.consecutive)
     ap.add_argument("--merge", type=int, default=50, help="merge flagged runs closer than this many readings")
-    ap.add_argument("--out", default="results/eval_baseline.json")
+    ap.add_argument("--detector", choices=["baseline", "forecast", "ensemble"], default=settings.detector)
+    ap.add_argument("--commands", action="store_true", help="forecast detector also uses NASA's command columns")
+    ap.add_argument("--min-peak", type=float, default=0.0,
+                    help="after-the-fact pruning: drop flagged runs whose peak surprise is below this (0 = off)")
+    ap.add_argument("--live-peak", type=float, default=settings.min_peak,
+                    help="forecast detector: alarm only once the run's peak surprise reaches this (what the server does)")
+    ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    if a.out is None:
+        a.out = f"results/eval_{a.detector}{'_cmds' if a.commands else ''}.json"
 
     data = Path(a.data)
     df = pd.read_csv(data / "labeled_anomalies.csv")
@@ -102,7 +127,7 @@ def main() -> None:
             continue
         labels = sorted(set(seqs[cid]))
         r = evaluate_channel(cid, data, labels, a.z, a.consecutive, settings.still_window,
-                             settings.envelope_margin, a.merge)
+                             settings.envelope_margin, a.merge, a.detector, a.commands, a.min_peak, a.live_peak)
         r["spacecraft"] = row.spacecraft
         rows.append(r)
         crafts.setdefault(row.spacecraft, []).append(r)
@@ -110,9 +135,13 @@ def main() -> None:
 
     demo = [c.strip() for c in "P-1,S-1,E-1,A-1,D-1,G-1,P-10,T-4,F-7,C-1".split(",")]
     result = {
-        "detector": "BaselineDetector (jump + envelope + stuck checks)",
+        "detector": {"forecast": "ForecastDetector (ridge AR forecaster + envelope + stuck)",
+                     "ensemble": "EnsembleDetector (forecaster OR baseline, same persistence)",
+                     "baseline": "BaselineDetector (jump + envelope + stuck checks)"}[a.detector]
+                    + (" + commands" if a.commands else ""),
         "settings": {"z_threshold": a.z, "consecutive": a.consecutive, "still_window": settings.still_window,
-                     "envelope_margin": settings.envelope_margin, "merge_gap": a.merge},
+                     "envelope_margin": settings.envelope_margin, "merge_gap": a.merge,
+                     "min_peak": a.min_peak, "live_peak": a.live_peak if a.detector == "forecast" else None},
         "scoring": "event-level: labeled sequence caught if any predicted sequence overlaps it",
         "all_channels": summarize(rows),
         "by_spacecraft": {k: summarize(v) for k, v in crafts.items()},

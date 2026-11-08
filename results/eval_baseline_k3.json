@@ -1,0 +1,2634 @@
+{
+ "detector": "BaselineDetector (jump + envelope + stuck checks)",
+ "settings": {
+  "z_threshold": 4.0,
+  "consecutive": 3,
+  "still_window": 30,
+  "envelope_margin": 0.1,
+  "merge_gap": 50,
+  "min_peak": 0.0,
+  "live_peak": null
+ },
+ "scoring": "event-level: labeled sequence caught if any predicted sequence overlaps it",
+ "all_channels": {
+  "channels": 81,
+  "labeled_sequences": 105,
+  "tp": 71,
+  "fn": 34,
+  "fp": 143,
+  "precision": 0.3318,
+  "recall": 0.6762,
+  "f1": 0.4451
+ },
+ "by_spacecraft": {
+  "SMAP": {
+   "channels": 54,
+   "labeled_sequences": 69,
+   "tp": 46,
+   "fn": 23,
+   "fp": 99,
+   "precision": 0.3172,
+   "recall": 0.6667,
+   "f1": 0.4299
+  },
+  "MSL": {
+   "channels": 27,
+   "labeled_sequences": 36,
+   "tp": 25,
+   "fn": 11,
+   "fp": 44,
+   "precision": 0.3623,
+   "recall": 0.6944,
+   "f1": 0.4762
+  }
+ },
+ "demo_channels": {
+  "channels": 10,
+  "labeled_sequences": 16,
+  "tp": 10,
+  "fn": 6,
+  "fp": 6,
+  "precision": 0.625,
+  "recall": 0.625,
+  "f1": 0.625
+ },
+ "reference_telemanom": {
+  "precision": 0.875,
+  "recall": 0.8,
+  "source": "Hundman et al., KDD 2018 (LSTM + nonparametric thresholding, SMAP+MSL)"
+ },
+ "seconds": 4.9,
+ "channels": [
+  {
+   "channel": "P-1",
+   "length": 8505,
+   "labeled": 3,
+   "predicted": 5,
+   "tp": 3,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     2149,
+     2349
+    ],
+    [
+     3539,
+     3779
+    ],
+    [
+     4536,
+     4844
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     2221,
+     2257
+    ],
+    [
+     3585,
+     3701
+    ],
+    [
+     4528,
+     4585
+    ],
+    [
+     4671,
+     4683
+    ],
+    [
+     4778,
+     4779
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "S-1",
+   "length": 7331,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     5300,
+     5747
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5347,
+     5602
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-1",
+   "length": 8516,
+   "labeled": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5000,
+     5030
+    ],
+    [
+     5610,
+     6086
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-2",
+   "length": 8532,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5598,
+     6995
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-3",
+   "length": 8307,
+   "labeled": 1,
+   "predicted": 29,
+   "tp": 1,
+   "fn": 0,
+   "fp": 16,
+   "stuck_check": true,
+   "labels": [
+    [
+     5094,
+     8306
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     592,
+     600
+    ],
+    [
+     968,
+     972
+    ],
+    [
+     1064,
+     1089
+    ],
+    [
+     1163,
+     1166
+    ],
+    [
+     1287,
+     1295
+    ],
+    [
+     2066,
+     2088
+    ],
+    [
+     2146,
+     2183
+    ],
+    [
+     2244,
+     2250
+    ],
+    [
+     2441,
+     2445
+    ],
+    [
+     2664,
+     2669
+    ],
+    [
+     3454,
+     3460
+    ],
+    [
+     3549,
+     3560
+    ],
+    [
+     3923,
+     3926
+    ],
+    [
+     4808,
+     4825
+    ],
+    [
+     4905,
+     4923
+    ],
+    [
+     5001,
+     5021
+    ],
+    [
+     5109,
+     5116
+    ],
+    [
+     5200,
+     5203
+    ],
+    [
+     5302,
+     5305
+    ],
+    [
+     5595,
+     5622
+    ],
+    [
+     5721,
+     5742
+    ],
+    [
+     6106,
+     6109
+    ],
+    [
+     6185,
+     6196
+    ],
+    [
+     6360,
+     6380
+    ],
+    [
+     7129,
+     7131
+    ],
+    [
+     7351,
+     7363
+    ],
+    [
+     7449,
+     7465
+    ],
+    [
+     7551,
+     7559
+    ],
+    [
+     7822,
+     7859
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-4",
+   "length": 8354,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5450,
+     8261
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-5",
+   "length": 8294,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5600,
+     5920
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-6",
+   "length": 8300,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5610,
+     5675
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5617,
+     5650
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-7",
+   "length": 8310,
+   "labeled": 1,
+   "predicted": 2,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     5394,
+     5674
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5442,
+     5500
+    ],
+    [
+     5569,
+     5636
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-8",
+   "length": 8532,
+   "labeled": 1,
+   "predicted": 12,
+   "tp": 1,
+   "fn": 0,
+   "fp": 11,
+   "stuck_check": true,
+   "labels": [
+    [
+     5400,
+     6022
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     977,
+     980
+    ],
+    [
+     2066,
+     2071
+    ],
+    [
+     2165,
+     2168
+    ],
+    [
+     2352,
+     2359
+    ],
+    [
+     2455,
+     2456
+    ],
+    [
+     3574,
+     3575
+    ],
+    [
+     3831,
+     3835
+    ],
+    [
+     5309,
+     5312
+    ],
+    [
+     5787,
+     5797
+    ],
+    [
+     7710,
+     7710
+    ],
+    [
+     8056,
+     8095
+    ],
+    [
+     8254,
+     8254
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-9",
+   "length": 8302,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5550,
+     5900
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5617,
+     5620
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-10",
+   "length": 8505,
+   "labeled": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5000,
+     5050
+    ],
+    [
+     5601,
+     5871
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-11",
+   "length": 8514,
+   "labeled": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5000,
+     5050
+    ],
+    [
+     5614,
+     5857
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-12",
+   "length": 8512,
+   "labeled": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5000,
+     5050
+    ],
+    [
+     5610,
+     6141
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "E-13",
+   "length": 8640,
+   "labeled": 3,
+   "predicted": 7,
+   "tp": 0,
+   "fn": 3,
+   "fp": 7,
+   "stuck_check": true,
+   "labels": [
+    [
+     5309,
+     5410
+    ],
+    [
+     5600,
+     5640
+    ],
+    [
+     6449,
+     6569
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     362,
+     366
+    ],
+    [
+     1741,
+     1745
+    ],
+    [
+     2628,
+     2628
+    ],
+    [
+     3119,
+     3119
+    ],
+    [
+     3217,
+     3221
+    ],
+    [
+     4695,
+     4698
+    ],
+    [
+     6073,
+     6078
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-1",
+   "length": 8640,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4690,
+     4774
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4752,
+     4784
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-1",
+   "length": 8509,
+   "labeled": 1,
+   "predicted": 5,
+   "tp": 1,
+   "fn": 0,
+   "fp": 4,
+   "stuck_check": false,
+   "labels": [
+    [
+     5250,
+     8508
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     382,
+     385
+    ],
+    [
+     481,
+     531
+    ],
+    [
+     769,
+     769
+    ],
+    [
+     1800,
+     1801
+    ],
+    [
+     5609,
+     8508
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "P-2",
+   "length": 8209,
+   "labeled": 2,
+   "predicted": 7,
+   "tp": 2,
+   "fn": 0,
+   "fp": 5,
+   "stuck_check": true,
+   "labels": [
+    [
+     5300,
+     6420
+    ],
+    [
+     5350,
+     6575
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5346,
+     6389
+    ],
+    [
+     6462,
+     6462
+    ],
+    [
+     7037,
+     7039
+    ],
+    [
+     7137,
+     7140
+    ],
+    [
+     7335,
+     7336
+    ],
+    [
+     7432,
+     7433
+    ],
+    [
+     8200,
+     8203
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "P-3",
+   "length": 8493,
+   "labeled": 1,
+   "predicted": 26,
+   "tp": 1,
+   "fn": 0,
+   "fp": 24,
+   "stuck_check": true,
+   "labels": [
+    [
+     5401,
+     6736
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     152,
+     157
+    ],
+    [
+     316,
+     331
+    ],
+    [
+     646,
+     649
+    ],
+    [
+     936,
+     984
+    ],
+    [
+     1281,
+     1288
+    ],
+    [
+     1448,
+     1448
+    ],
+    [
+     1868,
+     1868
+    ],
+    [
+     2153,
+     2153
+    ],
+    [
+     2330,
+     2364
+    ],
+    [
+     2508,
+     2512
+    ],
+    [
+     2630,
+     2662
+    ],
+    [
+     2816,
+     2816
+    ],
+    [
+     3065,
+     3075
+    ],
+    [
+     3408,
+     3426
+    ],
+    [
+     3530,
+     3539
+    ],
+    [
+     3850,
+     3856
+    ],
+    [
+     4604,
+     4621
+    ],
+    [
+     4768,
+     4769
+    ],
+    [
+     5065,
+     5068
+    ],
+    [
+     5218,
+     5227
+    ],
+    [
+     5387,
+     5553
+    ],
+    [
+     5778,
+     6645
+    ],
+    [
+     7363,
+     7368
+    ],
+    [
+     7741,
+     7747
+    ],
+    [
+     7916,
+     7923
+    ],
+    [
+     8491,
+     8492
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-2",
+   "length": 8595,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4319,
+     8536
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4692,
+     8525
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-3",
+   "length": 8640,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5225,
+     8500
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5302,
+     8639
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-4",
+   "length": 8473,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5225,
+     8472
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5219,
+     8472
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-2",
+   "length": 7914,
+   "labeled": 1,
+   "predicted": 4,
+   "tp": 1,
+   "fn": 0,
+   "fp": 3,
+   "stuck_check": true,
+   "labels": [
+    [
+     4450,
+     4560
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     345,
+     346
+    ],
+    [
+     2424,
+     2425
+    ],
+    [
+     2513,
+     2513
+    ],
+    [
+     4495,
+     4548
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-3",
+   "length": 8205,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     4575,
+     4760
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4635,
+     4733
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-4",
+   "length": 8080,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     4550,
+     4660
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4571,
+     4650
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-1",
+   "length": 8469,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     4770,
+     4890
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4827,
+     4870
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-2",
+   "length": 7361,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4030,
+     4070
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4043,
+     4075
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-5",
+   "length": 7628,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4800,
+     4850
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     2,
+     7627
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-6",
+   "length": 7884,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4870,
+     4950
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4920,
+     4926
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-7",
+   "length": 7642,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4940,
+     7641
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5040,
+     7641
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "F-1",
+   "length": 8584,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     5392,
+     5492
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5424,
+     5424
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "P-4",
+   "length": 7783,
+   "labeled": 3,
+   "predicted": 3,
+   "tp": 3,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     950,
+     1080
+    ],
+    [
+     2150,
+     2350
+    ],
+    [
+     4770,
+     4880
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1030,
+     1065
+    ],
+    [
+     2185,
+     2355
+    ],
+    [
+     4815,
+     4851
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-3",
+   "length": 7907,
+   "labeled": 1,
+   "predicted": 2,
+   "tp": 1,
+   "fn": 0,
+   "fp": 1,
+   "stuck_check": false,
+   "labels": [
+    [
+     4200,
+     4250
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4214,
+     4223
+    ],
+    [
+     7488,
+     7489
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "T-1",
+   "length": 8612,
+   "labeled": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     2399,
+     3898
+    ],
+    [
+     6550,
+     6585
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "T-2",
+   "length": 8625,
+   "labeled": 1,
+   "predicted": 16,
+   "tp": 0,
+   "fn": 1,
+   "fp": 16,
+   "stuck_check": true,
+   "labels": [
+    [
+     6840,
+     8624
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     117,
+     117
+    ],
+    [
+     311,
+     311
+    ],
+    [
+     410,
+     416
+    ],
+    [
+     1587,
+     1590
+    ],
+    [
+     1683,
+     1689
+    ],
+    [
+     1886,
+     1890
+    ],
+    [
+     1982,
+     1988
+    ],
+    [
+     2376,
+     2378
+    ],
+    [
+     3158,
+     3164
+    ],
+    [
+     3359,
+     3360
+    ],
+    [
+     4534,
+     4541
+    ],
+    [
+     4632,
+     4638
+    ],
+    [
+     4735,
+     4735
+    ],
+    [
+     4832,
+     4837
+    ],
+    [
+     5715,
+     5719
+    ],
+    [
+     6011,
+     6015
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-8",
+   "length": 7874,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4370,
+     4420
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4388,
+     4420
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-9",
+   "length": 7406,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     6250,
+     7405
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     6475,
+     7405
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "F-2",
+   "length": 8626,
+   "labeled": 1,
+   "predicted": 3,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     5669,
+     8625
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     6807,
+     6826
+    ],
+    [
+     6927,
+     7123
+    ],
+    [
+     7213,
+     8157
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-4",
+   "length": 7632,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4690,
+     4720
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4708,
+     4727
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "T-3",
+   "length": 8579,
+   "labeled": 2,
+   "predicted": 4,
+   "tp": 2,
+   "fn": 0,
+   "fp": 2,
+   "stuck_check": true,
+   "labels": [
+    [
+     2098,
+     2180
+    ],
+    [
+     5200,
+     5300
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     2159,
+     2183
+    ],
+    [
+     3342,
+     3343
+    ],
+    [
+     3917,
+     3917
+    ],
+    [
+     5254,
+     5281
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-11",
+   "length": 7431,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4270,
+     4330
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4304,
+     4314
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-12",
+   "length": 7918,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5178,
+     7917
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5384,
+     7917
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "B-1",
+   "length": 8044,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5060,
+     5130
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5079,
+     8043
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-6",
+   "length": 8640,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5600,
+     5700
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5655,
+     5679
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "G-7",
+   "length": 8029,
+   "labeled": 3,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 3,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     3650,
+     3750
+    ],
+    [
+     5050,
+     5100
+    ],
+    [
+     7560,
+     7675
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "P-7",
+   "length": 8071,
+   "labeled": 1,
+   "predicted": 15,
+   "tp": 1,
+   "fn": 0,
+   "fp": 9,
+   "stuck_check": true,
+   "labels": [
+    [
+     4950,
+     6600
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     35,
+     36
+    ],
+    [
+     248,
+     248
+    ],
+    [
+     1223,
+     1223
+    ],
+    [
+     1299,
+     1299
+    ],
+    [
+     1429,
+     1429
+    ],
+    [
+     1581,
+     1582
+    ],
+    [
+     5040,
+     5288
+    ],
+    [
+     5373,
+     5584
+    ],
+    [
+     5650,
+     5667
+    ],
+    [
+     5739,
+     5792
+    ],
+    [
+     5921,
+     5959
+    ],
+    [
+     6039,
+     6479
+    ],
+    [
+     7570,
+     7570
+    ],
+    [
+     7756,
+     7756
+    ],
+    [
+     7875,
+     7878
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "R-1",
+   "length": 7244,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4510,
+     4590
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4561,
+     4593
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-5",
+   "length": 4693,
+   "labeled": 1,
+   "predicted": 2,
+   "tp": 1,
+   "fn": 0,
+   "fp": 1,
+   "stuck_check": false,
+   "labels": [
+    [
+     2750,
+     2800
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     955,
+     955
+    ],
+    [
+     2759,
+     4692
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-6",
+   "length": 4453,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1890,
+     1930
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1899,
+     1934
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-7",
+   "length": 8631,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     6200,
+     8600
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "D-13",
+   "length": 7663,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5070,
+     5230
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5094,
+     7662
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-8",
+   "length": 8375,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4569,
+     8374
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "A-9",
+   "length": 8434,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     4569,
+     8433
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "F-3",
+   "length": 8376,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     5600,
+     5640
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     5613,
+     5627
+    ]
+   ],
+   "spacecraft": "SMAP"
+  },
+  {
+   "channel": "M-6",
+   "length": 2049,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1850,
+     2030
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1012,
+     2048
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-1",
+   "length": 2277,
+   "labeled": 1,
+   "predicted": 3,
+   "tp": 1,
+   "fn": 0,
+   "fp": 1,
+   "stuck_check": true,
+   "labels": [
+    [
+     1110,
+     2250
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     874,
+     874
+    ],
+    [
+     1220,
+     1247
+    ],
+    [
+     2175,
+     2176
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-2",
+   "length": 2277,
+   "labeled": 1,
+   "predicted": 4,
+   "tp": 1,
+   "fn": 0,
+   "fp": 3,
+   "stuck_check": true,
+   "labels": [
+    [
+     1110,
+     2250
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     234,
+     347
+    ],
+    [
+     490,
+     611
+    ],
+    [
+     668,
+     696
+    ],
+    [
+     1152,
+     2270
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "S-2",
+   "length": 1827,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     900,
+     910
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     907,
+     940
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "P-10",
+   "length": 6100,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     4590,
+     4720
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     4619,
+     6099
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-4",
+   "length": 2217,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1172,
+     1240
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1214,
+     1219
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-5",
+   "length": 2218,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1200,
+     1225
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1214,
+     1249
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "F-7",
+   "length": 5054,
+   "labeled": 3,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 3,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1250,
+     1450
+    ],
+    [
+     2670,
+     2790
+    ],
+    [
+     3325,
+     3425
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-3",
+   "length": 2127,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 0,
+   "fn": 1,
+   "fp": 1,
+   "stuck_check": false,
+   "labels": [
+    [
+     1250,
+     1500
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     2049,
+     2049
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-4",
+   "length": 2038,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1250,
+     1500
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-5",
+   "length": 2303,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1250,
+     1550
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1390,
+     1391
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "P-15",
+   "length": 2856,
+   "labeled": 1,
+   "predicted": 7,
+   "tp": 1,
+   "fn": 0,
+   "fp": 6,
+   "stuck_check": false,
+   "labels": [
+    [
+     1390,
+     1410
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     213,
+     215
+    ],
+    [
+     577,
+     578
+    ],
+    [
+     712,
+     714
+    ],
+    [
+     1151,
+     1154
+    ],
+    [
+     1264,
+     1266
+    ],
+    [
+     1334,
+     1334
+    ],
+    [
+     1399,
+     2855
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "C-1",
+   "length": 2264,
+   "labeled": 2,
+   "predicted": 4,
+   "tp": 1,
+   "fn": 1,
+   "fp": 2,
+   "stuck_check": true,
+   "labels": [
+    [
+     550,
+     750
+    ],
+    [
+     2100,
+     2210
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     552,
+     594
+    ],
+    [
+     735,
+     735
+    ],
+    [
+     1006,
+     1006
+    ],
+    [
+     2000,
+     2000
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "C-2",
+   "length": 2051,
+   "labeled": 2,
+   "predicted": 1,
+   "tp": 2,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     290,
+     390
+    ],
+    [
+     1540,
+     1575
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     210,
+     1954
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-12",
+   "length": 2430,
+   "labeled": 1,
+   "predicted": 5,
+   "tp": 1,
+   "fn": 0,
+   "fp": 4,
+   "stuck_check": true,
+   "labels": [
+    [
+     630,
+     750
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     611,
+     614
+    ],
+    [
+     716,
+     719
+    ],
+    [
+     1005,
+     1008
+    ],
+    [
+     1450,
+     1453
+    ],
+    [
+     1972,
+     1974
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-13",
+   "length": 2430,
+   "labeled": 2,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     690,
+     790
+    ],
+    [
+     1900,
+     2050
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1972,
+     1972
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "F-4",
+   "length": 3422,
+   "labeled": 1,
+   "predicted": 13,
+   "tp": 1,
+   "fn": 0,
+   "fp": 12,
+   "stuck_check": true,
+   "labels": [
+    [
+     2700,
+     2770
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     460,
+     488
+    ],
+    [
+     715,
+     716
+    ],
+    [
+     883,
+     883
+    ],
+    [
+     1091,
+     1091
+    ],
+    [
+     1175,
+     1175
+    ],
+    [
+     1394,
+     1406
+    ],
+    [
+     1652,
+     1652
+    ],
+    [
+     1908,
+     1909
+    ],
+    [
+     2128,
+     2130
+    ],
+    [
+     2328,
+     2329
+    ],
+    [
+     2557,
+     2559
+    ],
+    [
+     2758,
+     2759
+    ],
+    [
+     3000,
+     3036
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "F-5",
+   "length": 3922,
+   "labeled": 1,
+   "predicted": 4,
+   "tp": 1,
+   "fn": 0,
+   "fp": 3,
+   "stuck_check": false,
+   "labels": [
+    [
+     3550,
+     3700
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     570,
+     572
+    ],
+    [
+     830,
+     830
+    ],
+    [
+     1601,
+     1601
+    ],
+    [
+     3579,
+     3669
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "D-14",
+   "length": 2625,
+   "labeled": 2,
+   "predicted": 2,
+   "tp": 2,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1630,
+     1650
+    ],
+    [
+     1800,
+     2000
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1636,
+     1675
+    ],
+    [
+     1817,
+     2020
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-9",
+   "length": 1096,
+   "labeled": 2,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     780,
+     810
+    ],
+    [
+     890,
+     970
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     914,
+     960
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "P-14",
+   "length": 6100,
+   "labeled": 1,
+   "predicted": 1,
+   "tp": 1,
+   "fn": 0,
+   "fp": 0,
+   "stuck_check": true,
+   "labels": [
+    [
+     4575,
+     4755
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     18,
+     6099
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "T-8",
+   "length": 1519,
+   "labeled": 2,
+   "predicted": 5,
+   "tp": 1,
+   "fn": 1,
+   "fp": 4,
+   "stuck_check": false,
+   "labels": [
+    [
+     870,
+     930
+    ],
+    [
+     1330,
+     1370
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     162,
+     163
+    ],
+    [
+     233,
+     243
+    ],
+    [
+     889,
+     900
+    ],
+    [
+     1375,
+     1376
+    ],
+    [
+     1506,
+     1507
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "P-11",
+   "length": 3535,
+   "labeled": 2,
+   "predicted": 6,
+   "tp": 2,
+   "fn": 0,
+   "fp": 4,
+   "stuck_check": true,
+   "labels": [
+    [
+     1238,
+     1344
+    ],
+    [
+     1778,
+     1898
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     1259,
+     1348
+    ],
+    [
+     1852,
+     1895
+    ],
+    [
+     2096,
+     2096
+    ],
+    [
+     2729,
+     2731
+    ],
+    [
+     3254,
+     3266
+    ],
+    [
+     3481,
+     3484
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "D-15",
+   "length": 2158,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     1500,
+     2140
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "D-16",
+   "length": 2191,
+   "labeled": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
+   "stuck_check": false,
+   "labels": [
+    [
+     600,
+     1250
+    ]
+   ],
+   "predicted_sequences": [],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "M-7",
+   "length": 2156,
+   "labeled": 1,
+   "predicted": 2,
+   "tp": 1,
+   "fn": 0,
+   "fp": 1,
+   "stuck_check": false,
+   "labels": [
+    [
+     940,
+     1040
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     242,
+     246
+    ],
+    [
+     959,
+     1006
+    ]
+   ],
+   "spacecraft": "MSL"
+  },
+  {
+   "channel": "F-8",
+   "length": 2487,
+   "labeled": 1,
+   "predicted": 4,
+   "tp": 1,
+   "fn": 0,
+   "fp": 3,
+   "stuck_check": true,
+   "labels": [
+    [
+     1950,
+     2486
+    ]
+   ],
+   "predicted_sequences": [
+    [
+     114,
+     171
+    ],
+    [
+     259,
+     287
+    ],
+    [
+     1361,
+     1369
+    ],
+    [
+     2151,
+     2194
+    ]
+   ],
+   "spacecraft": "MSL"
+  }
+ ]
+}

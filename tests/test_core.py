@@ -462,3 +462,29 @@ def test_sim_plan_b_after_failed_fix(client):
     finally:
         client.post("/api/control/speed", json={"speed": 1})
         client.post("/api/sim/reset")
+
+
+# ---------- learned forecaster / ensemble detector ----------
+@pytest.mark.parametrize("cls_name", ["ForecastDetector", "EnsembleDetector"])
+def test_forecaster_quiet_on_normal_data(cls_name):
+    import app.forecast as fc
+    det = getattr(fc, cls_name)(smooth(4000))
+    assert not any(det.update(float(v)).flagged for v in smooth(3000, 4000, seed=2))
+
+
+@pytest.mark.parametrize("cls_name", ["ForecastDetector", "EnsembleDetector"])
+@pytest.mark.parametrize("kind,comp", [("spike", "jump"), ("drift", "envelope"), ("flatline", "stuck")])
+def test_forecaster_detects_each_fault_with_right_shape(cls_name, kind, comp):
+    import app.forecast as fc
+    det = getattr(fc, cls_name)(smooth(4000))
+    x = smooth(700, 4000, seed=3)
+    if kind == "spike":
+        x[300:330] += 1.2
+    elif kind == "drift":
+        x[300:] += np.linspace(0, 1.5, 400)
+    else:
+        x[300:] = x[300]
+    res = [det.update(float(v)) for v in x]
+    hits = [i for i, r in enumerate(res) if r.flagged]
+    assert hits and hits[0] >= 300, f"{kind} not detected after injection"
+    assert res[hits[0]].component == comp

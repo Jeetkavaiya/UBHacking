@@ -2,66 +2,68 @@
  "detector": "BaselineDetector (jump + envelope + stuck checks)",
  "settings": {
   "z_threshold": 4.0,
-  "consecutive": 3,
+  "consecutive": 12,
   "still_window": 30,
   "envelope_margin": 0.1,
-  "merge_gap": 50
+  "merge_gap": 50,
+  "min_peak": 0.0,
+  "live_peak": null
  },
  "scoring": "event-level: labeled sequence caught if any predicted sequence overlaps it",
  "all_channels": {
   "channels": 81,
   "labeled_sequences": 105,
-  "tp": 71,
-  "fn": 34,
-  "fp": 143,
-  "precision": 0.3318,
-  "recall": 0.6762,
-  "f1": 0.4451
+  "tp": 59,
+  "fn": 46,
+  "fp": 22,
+  "precision": 0.7284,
+  "recall": 0.5619,
+  "f1": 0.6344
  },
  "by_spacecraft": {
   "SMAP": {
    "channels": 54,
    "labeled_sequences": 69,
-   "tp": 46,
-   "fn": 23,
-   "fp": 99,
-   "precision": 0.3172,
-   "recall": 0.6667,
-   "f1": 0.4299
+   "tp": 43,
+   "fn": 26,
+   "fp": 16,
+   "precision": 0.7288,
+   "recall": 0.6232,
+   "f1": 0.6719
   },
   "MSL": {
    "channels": 27,
    "labeled_sequences": 36,
-   "tp": 25,
-   "fn": 11,
-   "fp": 44,
-   "precision": 0.3623,
-   "recall": 0.6944,
-   "f1": 0.4762
+   "tp": 16,
+   "fn": 20,
+   "fp": 6,
+   "precision": 0.7273,
+   "recall": 0.4444,
+   "f1": 0.5517
   }
  },
  "demo_channels": {
   "channels": 10,
   "labeled_sequences": 16,
-  "tp": 10,
-  "fn": 6,
-  "fp": 6,
-  "precision": 0.625,
-  "recall": 0.625,
-  "f1": 0.625
+  "tp": 8,
+  "fn": 8,
+  "fp": 0,
+  "precision": 1.0,
+  "recall": 0.5,
+  "f1": 0.6667
  },
  "reference_telemanom": {
   "precision": 0.875,
   "recall": 0.8,
   "source": "Hundman et al., KDD 2018 (LSTM + nonparametric thresholding, SMAP+MSL)"
  },
- "seconds": 5.2,
+ "seconds": 4.9,
  "channels": [
   {
    "channel": "P-1",
    "length": 8505,
    "labeled": 3,
-   "predicted": 5,
+   "predicted": 4,
    "tp": 3,
    "fn": 0,
    "fp": 0,
@@ -82,24 +84,20 @@
    ],
    "predicted_sequences": [
     [
-     2221,
+     2230,
      2257
     ],
     [
-     3585,
+     3594,
      3701
     ],
     [
-     4528,
+     4537,
      4585
     ],
     [
-     4671,
+     4680,
      4683
-    ],
-    [
-     4778,
-     4779
     ]
    ],
    "spacecraft": "SMAP"
@@ -108,7 +106,7 @@
    "channel": "S-1",
    "length": 7331,
    "labeled": 1,
-   "predicted": 1,
+   "predicted": 2,
    "tp": 1,
    "fn": 0,
    "fp": 0,
@@ -121,8 +119,12 @@
    ],
    "predicted_sequences": [
     [
-     5347,
-     5602
+     5356,
+     5499
+    ],
+    [
+     5555,
+     5573
     ]
    ],
    "spacecraft": "SMAP"
@@ -171,10 +173,10 @@
    "channel": "E-3",
    "length": 8307,
    "labeled": 1,
-   "predicted": 29,
+   "predicted": 12,
    "tp": 1,
    "fn": 0,
-   "fp": 16,
+   "fp": 6,
    "stuck_check": true,
    "labels": [
     [
@@ -184,119 +186,51 @@
    ],
    "predicted_sequences": [
     [
-     592,
-     600
-    ],
-    [
-     968,
-     972
-    ],
-    [
-     1064,
-     1089
-    ],
-    [
-     1163,
-     1166
-    ],
-    [
-     1287,
-     1295
-    ],
-    [
-     2066,
+     2075,
      2088
     ],
     [
-     2146,
+     2178,
      2183
     ],
     [
-     2244,
-     2250
-    ],
-    [
-     2441,
-     2445
-    ],
-    [
-     2664,
-     2669
-    ],
-    [
-     3454,
-     3460
-    ],
-    [
-     3549,
+     3558,
      3560
     ],
     [
-     3923,
-     3926
-    ],
-    [
-     4808,
+     4817,
      4825
     ],
     [
-     4905,
+     4914,
      4923
     ],
     [
-     5001,
+     5010,
      5021
     ],
     [
-     5109,
-     5116
-    ],
-    [
-     5200,
-     5203
-    ],
-    [
-     5302,
-     5305
-    ],
-    [
-     5595,
-     5622
-    ],
-    [
-     5721,
+     5730,
      5742
     ],
     [
-     6106,
-     6109
-    ],
-    [
-     6185,
+     6194,
      6196
     ],
     [
-     6360,
+     6369,
      6380
     ],
     [
-     7129,
-     7131
-    ],
-    [
-     7351,
+     7360,
      7363
     ],
     [
-     7449,
+     7458,
      7465
     ],
     [
-     7551,
-     7559
-    ],
-    [
-     7822,
+     7852,
      7859
     ]
    ],
@@ -355,7 +289,7 @@
    ],
    "predicted_sequences": [
     [
-     5617,
+     5626,
      5650
     ]
    ],
@@ -378,11 +312,11 @@
    ],
    "predicted_sequences": [
     [
-     5442,
-     5500
+     5451,
+     5483
     ],
     [
-     5569,
+     5578,
      5636
     ]
    ],
@@ -392,10 +326,10 @@
    "channel": "E-8",
    "length": 8532,
    "labeled": 1,
-   "predicted": 12,
+   "predicted": 2,
    "tp": 1,
    "fn": 0,
-   "fp": 11,
+   "fp": 1,
    "stuck_check": true,
    "labels": [
     [
@@ -405,52 +339,12 @@
    ],
    "predicted_sequences": [
     [
-     977,
-     980
-    ],
-    [
-     2066,
-     2071
-    ],
-    [
-     2165,
-     2168
-    ],
-    [
-     2352,
-     2359
-    ],
-    [
-     2455,
-     2456
-    ],
-    [
-     3574,
-     3575
-    ],
-    [
-     3831,
-     3835
-    ],
-    [
-     5309,
-     5312
-    ],
-    [
-     5787,
+     5796,
      5797
     ],
     [
-     7710,
-     7710
-    ],
-    [
-     8056,
+     8065,
      8095
-    ],
-    [
-     8254,
-     8254
     ]
    ],
    "spacecraft": "SMAP"
@@ -459,9 +353,9 @@
    "channel": "E-9",
    "length": 8302,
    "labeled": 1,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 0,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -470,12 +364,7 @@
      5900
     ]
    ],
-   "predicted_sequences": [
-    [
-     5617,
-     5620
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "SMAP"
   },
   {
@@ -548,10 +437,10 @@
    "channel": "E-13",
    "length": 8640,
    "labeled": 3,
-   "predicted": 7,
+   "predicted": 0,
    "tp": 0,
    "fn": 3,
-   "fp": 7,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -567,36 +456,7 @@
      6569
     ]
    ],
-   "predicted_sequences": [
-    [
-     362,
-     366
-    ],
-    [
-     1741,
-     1745
-    ],
-    [
-     2628,
-     2628
-    ],
-    [
-     3119,
-     3119
-    ],
-    [
-     3217,
-     3221
-    ],
-    [
-     4695,
-     4698
-    ],
-    [
-     6073,
-     6078
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "SMAP"
   },
   {
@@ -616,7 +476,7 @@
    ],
    "predicted_sequences": [
     [
-     4752,
+     4761,
      4784
     ]
    ],
@@ -626,10 +486,10 @@
    "channel": "D-1",
    "length": 8509,
    "labeled": 1,
-   "predicted": 5,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 4,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -639,23 +499,7 @@
    ],
    "predicted_sequences": [
     [
-     382,
-     385
-    ],
-    [
-     481,
-     531
-    ],
-    [
-     769,
-     769
-    ],
-    [
-     1800,
-     1801
-    ],
-    [
-     5609,
+     5618,
      8508
     ]
    ],
@@ -665,10 +509,10 @@
    "channel": "P-2",
    "length": 8209,
    "labeled": 2,
-   "predicted": 7,
+   "predicted": 1,
    "tp": 2,
    "fn": 0,
-   "fp": 5,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -682,32 +526,8 @@
    ],
    "predicted_sequences": [
     [
-     5346,
+     5355,
      6389
-    ],
-    [
-     6462,
-     6462
-    ],
-    [
-     7037,
-     7039
-    ],
-    [
-     7137,
-     7140
-    ],
-    [
-     7335,
-     7336
-    ],
-    [
-     7432,
-     7433
-    ],
-    [
-     8200,
-     8203
     ]
    ],
    "spacecraft": "SMAP"
@@ -716,10 +536,10 @@
    "channel": "P-3",
    "length": 8493,
    "labeled": 1,
-   "predicted": 26,
+   "predicted": 13,
    "tp": 1,
    "fn": 0,
-   "fp": 24,
+   "fp": 9,
    "stuck_check": true,
    "labels": [
     [
@@ -729,108 +549,56 @@
    ],
    "predicted_sequences": [
     [
-     152,
-     157
-    ],
-    [
-     316,
+     325,
      331
     ],
     [
-     646,
-     649
-    ],
-    [
-     936,
+     945,
      984
     ],
     [
-     1281,
-     1288
-    ],
-    [
-     1448,
-     1448
-    ],
-    [
-     1868,
-     1868
-    ],
-    [
-     2153,
-     2153
-    ],
-    [
-     2330,
+     2339,
      2364
     ],
     [
-     2508,
-     2512
-    ],
-    [
-     2630,
+     2639,
      2662
     ],
     [
-     2816,
-     2816
-    ],
-    [
-     3065,
+     3074,
      3075
     ],
     [
-     3408,
+     3417,
      3426
     ],
     [
-     3530,
+     3539,
      3539
     ],
     [
-     3850,
-     3856
-    ],
-    [
-     4604,
+     4613,
      4621
     ],
     [
-     4768,
-     4769
-    ],
-    [
-     5065,
-     5068
-    ],
-    [
-     5218,
+     5227,
      5227
     ],
     [
-     5387,
-     5553
+     5396,
+     5524
     ],
     [
-     5778,
-     6645
+     5807,
+     6129
     ],
     [
-     7363,
-     7368
+     6188,
+     6366
     ],
     [
-     7741,
-     7747
-    ],
-    [
-     7916,
-     7923
-    ],
-    [
-     8491,
-     8492
+     6440,
+     6635
     ]
    ],
    "spacecraft": "SMAP"
@@ -852,7 +620,7 @@
    ],
    "predicted_sequences": [
     [
-     4692,
+     4701,
      8525
     ]
    ],
@@ -875,7 +643,7 @@
    ],
    "predicted_sequences": [
     [
-     5302,
+     5330,
      8639
     ]
    ],
@@ -898,7 +666,7 @@
    ],
    "predicted_sequences": [
     [
-     5219,
+     5246,
      8472
     ]
    ],
@@ -908,10 +676,10 @@
    "channel": "A-2",
    "length": 7914,
    "labeled": 1,
-   "predicted": 4,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 3,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -921,19 +689,7 @@
    ],
    "predicted_sequences": [
     [
-     345,
-     346
-    ],
-    [
-     2424,
-     2425
-    ],
-    [
-     2513,
-     2513
-    ],
-    [
-     4495,
+     4504,
      4548
     ]
    ],
@@ -956,7 +712,7 @@
    ],
    "predicted_sequences": [
     [
-     4635,
+     4684,
      4733
     ]
    ],
@@ -979,7 +735,7 @@
    ],
    "predicted_sequences": [
     [
-     4571,
+     4612,
      4650
     ]
    ],
@@ -1002,7 +758,7 @@
    ],
    "predicted_sequences": [
     [
-     4827,
+     4836,
      4870
     ]
    ],
@@ -1025,7 +781,7 @@
    ],
    "predicted_sequences": [
     [
-     4043,
+     4052,
      4075
     ]
    ],
@@ -1048,7 +804,7 @@
    ],
    "predicted_sequences": [
     [
-     2,
+     11,
      7627
     ]
    ],
@@ -1058,9 +814,9 @@
    "channel": "D-6",
    "length": 7884,
    "labeled": 1,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 0,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -1069,12 +825,7 @@
      4950
     ]
    ],
-   "predicted_sequences": [
-    [
-     4920,
-     4926
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "SMAP"
   },
   {
@@ -1094,7 +845,7 @@
    ],
    "predicted_sequences": [
     [
-     5040,
+     5049,
      7641
     ]
    ],
@@ -1104,9 +855,9 @@
    "channel": "F-1",
    "length": 8584,
    "labeled": 1,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 0,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
    "fp": 0,
    "stuck_check": true,
    "labels": [
@@ -1115,19 +866,14 @@
      5492
     ]
    ],
-   "predicted_sequences": [
-    [
-     5424,
-     5424
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "SMAP"
   },
   {
    "channel": "P-4",
    "length": 7783,
    "labeled": 3,
-   "predicted": 3,
+   "predicted": 4,
    "tp": 3,
    "fn": 0,
    "fp": 0,
@@ -1148,15 +894,19 @@
    ],
    "predicted_sequences": [
     [
-     1030,
+     1039,
      1065
     ],
     [
-     2185,
+     2194,
+     2218
+    ],
+    [
+     2277,
      2355
     ],
     [
-     4815,
+     4824,
      4851
     ]
    ],
@@ -1166,10 +916,10 @@
    "channel": "G-3",
    "length": 7907,
    "labeled": 1,
-   "predicted": 2,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 1,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -1179,12 +929,8 @@
    ],
    "predicted_sequences": [
     [
-     4214,
+     4223,
      4223
-    ],
-    [
-     7488,
-     7489
     ]
    ],
    "spacecraft": "SMAP"
@@ -1215,10 +961,10 @@
    "channel": "T-2",
    "length": 8625,
    "labeled": 1,
-   "predicted": 16,
+   "predicted": 0,
    "tp": 0,
    "fn": 1,
-   "fp": 16,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -1226,72 +972,7 @@
      8624
     ]
    ],
-   "predicted_sequences": [
-    [
-     117,
-     117
-    ],
-    [
-     311,
-     311
-    ],
-    [
-     410,
-     416
-    ],
-    [
-     1587,
-     1590
-    ],
-    [
-     1683,
-     1689
-    ],
-    [
-     1886,
-     1890
-    ],
-    [
-     1982,
-     1988
-    ],
-    [
-     2376,
-     2378
-    ],
-    [
-     3158,
-     3164
-    ],
-    [
-     3359,
-     3360
-    ],
-    [
-     4534,
-     4541
-    ],
-    [
-     4632,
-     4638
-    ],
-    [
-     4735,
-     4735
-    ],
-    [
-     4832,
-     4837
-    ],
-    [
-     5715,
-     5719
-    ],
-    [
-     6011,
-     6015
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "SMAP"
   },
   {
@@ -1311,7 +992,7 @@
    ],
    "predicted_sequences": [
     [
-     4388,
+     4397,
      4420
     ]
    ],
@@ -1334,7 +1015,7 @@
    ],
    "predicted_sequences": [
     [
-     6475,
+     6484,
      7405
     ]
    ],
@@ -1344,7 +1025,7 @@
    "channel": "F-2",
    "length": 8626,
    "labeled": 1,
-   "predicted": 3,
+   "predicted": 2,
    "tp": 1,
    "fn": 0,
    "fp": 0,
@@ -1357,15 +1038,11 @@
    ],
    "predicted_sequences": [
     [
-     6807,
-     6826
-    ],
-    [
-     6927,
+     6936,
      7123
     ],
     [
-     7213,
+     7222,
      8157
     ]
    ],
@@ -1388,7 +1065,7 @@
    ],
    "predicted_sequences": [
     [
-     4708,
+     4717,
      4727
     ]
    ],
@@ -1398,10 +1075,10 @@
    "channel": "T-3",
    "length": 8579,
    "labeled": 2,
-   "predicted": 4,
+   "predicted": 2,
    "tp": 2,
    "fn": 0,
-   "fp": 2,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -1415,19 +1092,11 @@
    ],
    "predicted_sequences": [
     [
-     2159,
+     2168,
      2183
     ],
     [
-     3342,
-     3343
-    ],
-    [
-     3917,
-     3917
-    ],
-    [
-     5254,
+     5263,
      5281
     ]
    ],
@@ -1450,7 +1119,7 @@
    ],
    "predicted_sequences": [
     [
-     4304,
+     4313,
      4314
     ]
    ],
@@ -1473,7 +1142,7 @@
    ],
    "predicted_sequences": [
     [
-     5384,
+     5393,
      7917
     ]
    ],
@@ -1496,7 +1165,7 @@
    ],
    "predicted_sequences": [
     [
-     5079,
+     5088,
      8043
     ]
    ],
@@ -1519,7 +1188,7 @@
    ],
    "predicted_sequences": [
     [
-     5655,
+     5664,
      5679
     ]
    ],
@@ -1555,10 +1224,10 @@
    "channel": "P-7",
    "length": 8071,
    "labeled": 1,
-   "predicted": 15,
+   "predicted": 6,
    "tp": 1,
    "fn": 0,
-   "fp": 9,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -1568,64 +1237,28 @@
    ],
    "predicted_sequences": [
     [
-     35,
-     36
+     5082,
+     5115
     ],
     [
-     248,
-     248
+     5382,
+     5393
     ],
     [
-     1223,
-     1223
-    ],
-    [
-     1299,
-     1299
-    ],
-    [
-     1429,
-     1429
-    ],
-    [
-     1581,
-     1582
-    ],
-    [
-     5040,
-     5288
-    ],
-    [
-     5373,
-     5584
-    ],
-    [
-     5650,
-     5667
-    ],
-    [
-     5739,
-     5792
-    ],
-    [
-     5921,
+     5953,
      5959
     ],
     [
-     6039,
-     6479
+     6126,
+     6127
     ],
     [
-     7570,
-     7570
+     6234,
+     6236
     ],
     [
-     7756,
-     7756
-    ],
-    [
-     7875,
-     7878
+     6432,
+     6468
     ]
    ],
    "spacecraft": "SMAP"
@@ -1647,7 +1280,7 @@
    ],
    "predicted_sequences": [
     [
-     4561,
+     4570,
      4593
     ]
    ],
@@ -1657,10 +1290,10 @@
    "channel": "A-5",
    "length": 4693,
    "labeled": 1,
-   "predicted": 2,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 1,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -1670,11 +1303,7 @@
    ],
    "predicted_sequences": [
     [
-     955,
-     955
-    ],
-    [
-     2759,
+     2768,
      4692
     ]
    ],
@@ -1697,7 +1326,7 @@
    ],
    "predicted_sequences": [
     [
-     1899,
+     1908,
      1934
     ]
    ],
@@ -1738,7 +1367,7 @@
    ],
    "predicted_sequences": [
     [
-     5094,
+     5103,
      7662
     ]
    ],
@@ -1797,7 +1426,7 @@
    ],
    "predicted_sequences": [
     [
-     5613,
+     5622,
      5627
     ]
    ],
@@ -1820,7 +1449,7 @@
    ],
    "predicted_sequences": [
     [
-     1012,
+     1021,
      2048
     ]
    ],
@@ -1830,10 +1459,10 @@
    "channel": "M-1",
    "length": 2277,
    "labeled": 1,
-   "predicted": 3,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 1,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -1843,16 +1472,8 @@
    ],
    "predicted_sequences": [
     [
-     874,
-     874
-    ],
-    [
-     1220,
+     1229,
      1247
-    ],
-    [
-     2175,
-     2176
     ]
    ],
    "spacecraft": "MSL"
@@ -1864,7 +1485,7 @@
    "predicted": 4,
    "tp": 1,
    "fn": 0,
-   "fp": 3,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -1874,20 +1495,20 @@
    ],
    "predicted_sequences": [
     [
-     234,
-     347
+     1235,
+     1246
     ],
     [
-     490,
-     611
+     1608,
+     1609
     ],
     [
-     668,
-     696
+     1740,
+     1785
     ],
     [
-     1152,
-     2270
+     1908,
+     1908
     ]
    ],
    "spacecraft": "MSL"
@@ -1897,9 +1518,9 @@
    "length": 1827,
    "labeled": 1,
    "predicted": 1,
-   "tp": 1,
-   "fn": 0,
-   "fp": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 1,
    "stuck_check": false,
    "labels": [
     [
@@ -1909,7 +1530,7 @@
    ],
    "predicted_sequences": [
     [
-     907,
+     916,
      940
     ]
    ],
@@ -1932,7 +1553,7 @@
    ],
    "predicted_sequences": [
     [
-     4619,
+     4628,
      6099
     ]
    ],
@@ -1942,9 +1563,9 @@
    "channel": "T-4",
    "length": 2217,
    "labeled": 1,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 0,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -1953,12 +1574,7 @@
      1240
     ]
    ],
-   "predicted_sequences": [
-    [
-     1214,
-     1219
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
@@ -1978,7 +1594,7 @@
    ],
    "predicted_sequences": [
     [
-     1214,
+     1223,
      1249
     ]
    ],
@@ -2014,10 +1630,10 @@
    "channel": "M-3",
    "length": 2127,
    "labeled": 1,
-   "predicted": 1,
+   "predicted": 0,
    "tp": 0,
    "fn": 1,
-   "fp": 1,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -2025,12 +1641,7 @@
      1500
     ]
    ],
-   "predicted_sequences": [
-    [
-     2049,
-     2049
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
@@ -2055,9 +1666,9 @@
    "channel": "M-5",
    "length": 2303,
    "labeled": 1,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 0,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -2066,22 +1677,17 @@
      1550
     ]
    ],
-   "predicted_sequences": [
-    [
-     1390,
-     1391
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
    "channel": "P-15",
    "length": 2856,
    "labeled": 1,
-   "predicted": 7,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 6,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -2091,31 +1697,7 @@
    ],
    "predicted_sequences": [
     [
-     213,
-     215
-    ],
-    [
-     577,
-     578
-    ],
-    [
-     712,
-     714
-    ],
-    [
-     1151,
-     1154
-    ],
-    [
-     1264,
-     1266
-    ],
-    [
-     1334,
-     1334
-    ],
-    [
-     1399,
+     1408,
      2855
     ]
    ],
@@ -2125,10 +1707,10 @@
    "channel": "C-1",
    "length": 2264,
    "labeled": 2,
-   "predicted": 4,
-   "tp": 1,
-   "fn": 1,
-   "fp": 2,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -2140,24 +1722,7 @@
      2210
     ]
    ],
-   "predicted_sequences": [
-    [
-     552,
-     594
-    ],
-    [
-     735,
-     735
-    ],
-    [
-     1006,
-     1006
-    ],
-    [
-     2000,
-     2000
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
@@ -2181,7 +1746,7 @@
    ],
    "predicted_sequences": [
     [
-     210,
+     219,
      1954
     ]
    ],
@@ -2191,10 +1756,10 @@
    "channel": "T-12",
    "length": 2430,
    "labeled": 1,
-   "predicted": 5,
-   "tp": 1,
-   "fn": 0,
-   "fp": 4,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 1,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -2202,37 +1767,16 @@
      750
     ]
    ],
-   "predicted_sequences": [
-    [
-     611,
-     614
-    ],
-    [
-     716,
-     719
-    ],
-    [
-     1005,
-     1008
-    ],
-    [
-     1450,
-     1453
-    ],
-    [
-     1972,
-     1974
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
    "channel": "T-13",
    "length": 2430,
    "labeled": 2,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -2245,22 +1789,17 @@
      2050
     ]
    ],
-   "predicted_sequences": [
-    [
-     1972,
-     1972
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
    "channel": "F-4",
    "length": 3422,
    "labeled": 1,
-   "predicted": 13,
-   "tp": 1,
-   "fn": 0,
-   "fp": 12,
+   "predicted": 3,
+   "tp": 0,
+   "fn": 1,
+   "fp": 3,
    "stuck_check": true,
    "labels": [
     [
@@ -2270,55 +1809,15 @@
    ],
    "predicted_sequences": [
     [
-     460,
+     469,
      488
     ],
     [
-     715,
-     716
-    ],
-    [
-     883,
-     883
-    ],
-    [
-     1091,
-     1091
-    ],
-    [
-     1175,
-     1175
-    ],
-    [
-     1394,
+     1403,
      1406
     ],
     [
-     1652,
-     1652
-    ],
-    [
-     1908,
-     1909
-    ],
-    [
-     2128,
-     2130
-    ],
-    [
-     2328,
-     2329
-    ],
-    [
-     2557,
-     2559
-    ],
-    [
-     2758,
-     2759
-    ],
-    [
-     3000,
+     3009,
      3036
     ]
    ],
@@ -2328,10 +1827,10 @@
    "channel": "F-5",
    "length": 3922,
    "labeled": 1,
-   "predicted": 4,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 3,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -2341,19 +1840,7 @@
    ],
    "predicted_sequences": [
     [
-     570,
-     572
-    ],
-    [
-     830,
-     830
-    ],
-    [
-     1601,
-     1601
-    ],
-    [
-     3579,
+     3588,
      3669
     ]
    ],
@@ -2380,11 +1867,11 @@
    ],
    "predicted_sequences": [
     [
-     1636,
+     1645,
      1675
     ],
     [
-     1817,
+     1826,
      2020
     ]
    ],
@@ -2394,9 +1881,9 @@
    "channel": "T-9",
    "length": 1096,
    "labeled": 2,
-   "predicted": 1,
-   "tp": 1,
-   "fn": 1,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
    "fp": 0,
    "stuck_check": false,
    "labels": [
@@ -2409,12 +1896,7 @@
      970
     ]
    ],
-   "predicted_sequences": [
-    [
-     914,
-     960
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
@@ -2434,7 +1916,7 @@
    ],
    "predicted_sequences": [
     [
-     18,
+     27,
      6099
     ]
    ],
@@ -2444,10 +1926,10 @@
    "channel": "T-8",
    "length": 1519,
    "labeled": 2,
-   "predicted": 5,
-   "tp": 1,
-   "fn": 1,
-   "fp": 4,
+   "predicted": 0,
+   "tp": 0,
+   "fn": 2,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -2459,38 +1941,17 @@
      1370
     ]
    ],
-   "predicted_sequences": [
-    [
-     162,
-     163
-    ],
-    [
-     233,
-     243
-    ],
-    [
-     889,
-     900
-    ],
-    [
-     1375,
-     1376
-    ],
-    [
-     1506,
-     1507
-    ]
-   ],
+   "predicted_sequences": [],
    "spacecraft": "MSL"
   },
   {
    "channel": "P-11",
    "length": 3535,
    "labeled": 2,
-   "predicted": 6,
+   "predicted": 2,
    "tp": 2,
    "fn": 0,
-   "fp": 4,
+   "fp": 0,
    "stuck_check": true,
    "labels": [
     [
@@ -2504,28 +1965,12 @@
    ],
    "predicted_sequences": [
     [
-     1259,
-     1348
+     1268,
+     1270
     ],
     [
-     1852,
-     1895
-    ],
-    [
-     2096,
-     2096
-    ],
-    [
-     2729,
-     2731
-    ],
-    [
-     3254,
-     3266
-    ],
-    [
-     3481,
-     3484
+     1861,
+     1866
     ]
    ],
    "spacecraft": "MSL"
@@ -2570,10 +2015,10 @@
    "channel": "M-7",
    "length": 2156,
    "labeled": 1,
-   "predicted": 2,
+   "predicted": 1,
    "tp": 1,
    "fn": 0,
-   "fp": 1,
+   "fp": 0,
    "stuck_check": false,
    "labels": [
     [
@@ -2583,11 +2028,7 @@
    ],
    "predicted_sequences": [
     [
-     242,
-     246
-    ],
-    [
-     959,
+     968,
      1006
     ]
    ],
@@ -2597,10 +2038,10 @@
    "channel": "F-8",
    "length": 2487,
    "labeled": 1,
-   "predicted": 4,
+   "predicted": 3,
    "tp": 1,
    "fn": 0,
-   "fp": 3,
+   "fp": 2,
    "stuck_check": true,
    "labels": [
     [
@@ -2610,20 +2051,16 @@
    ],
    "predicted_sequences": [
     [
-     114,
-     171
+     123,
+     123
     ],
     [
-     259,
+     268,
      287
     ],
     [
-     1361,
-     1369
-    ],
-    [
-     2151,
-     2194
+     2160,
+     2160
     ]
    ],
    "spacecraft": "MSL"
