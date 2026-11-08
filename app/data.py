@@ -35,17 +35,38 @@ class Channel:
     test: np.ndarray
     anomalies: list[tuple[int, int]] = field(default_factory=list)
     synthetic: bool = False
+    # Simulated satellite (kind="sim") channels are live, named and in physical units.
+    kind: str = "nasa"
+    name: str = ""
+    units: str = ""
+    part: str = ""
+    sensor_part: str | None = None
+    monitored: bool = True
+    subsystem_name: str = ""
+    # The detector sees (value - center) / half, i.e. -1..1 over the training range,
+    # the same scaling NASA applied to its data. NASA channels are already scaled.
+    center: float = 0.0
+    half: float = 1.0
 
     @property
     def group(self) -> str:
-        return self.id.split("-")[0]
+        return self.subsystem_name or self.id.split("-")[0]
 
     @property
     def subsystem(self) -> str:
-        return GROUP_NAMES.get(self.group, f"Group {self.group}")
+        return self.subsystem_name or GROUP_NAMES.get(self.group, f"Group {self.group}")
+
+    def to_det(self, v: float) -> float:
+        return (v - self.center) / self.half
+
+    def from_det(self, x: float) -> float:
+        return x * self.half + self.center
+
+    def normal_range(self) -> list[float]:
+        return [round(float(self.train.min()), 4), round(float(self.train.max()), 4)]
 
     def meta(self) -> dict:
-        return {
+        m = {
             "id": self.id,
             "spacecraft": self.spacecraft,
             "group": self.group,
@@ -53,7 +74,12 @@ class Channel:
             "length": int(len(self.test)),
             "labeled_anomalies": [list(a) for a in self.anomalies],
             "synthetic": self.synthetic,
+            "kind": self.kind,
         }
+        if self.kind == "sim":
+            m.update(name=self.name, units=self.units, part=self.part, monitored=self.monitored,
+                     normal_range=self.normal_range())
+        return m
 
 
 def _values(path: Path) -> np.ndarray:

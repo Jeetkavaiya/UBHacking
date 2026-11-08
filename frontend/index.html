@@ -1,5 +1,924 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mission Control AI</title></head><body style="font-family:system-ui;padding:24px">
-<h1>Mission Control AI backend is running</h1>
-<p>The dashboard goes in this folder in Phase 4. Until then: <a href="/docs">API docs</a> · <a href="/api/health">health</a></p>
-</body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission Control AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060a12; --panel: #0c1320; --panel-2: #101a2b; --line: #1c2a40; --line-2: #26385a;
+  --text: #dce7f7; --muted: #7f8ea8; --dim: #4f5d75;
+  --accent: #4cc9f0; --ok: #3ddc97; --warn: #ffb547; --bad: #ff5c6c;
+  --syn: #c792ea; --nasa: #5b9bff;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --sans: Inter, system-ui, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+
+/* ---------- header ---------- */
+header {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #0b1424, var(--bg));
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.brand .logo { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--accent);
+  box-shadow: 0 0 14px var(--accent); position: relative; }
+.brand .logo::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--accent); }
+.brand h1 { font-size: 16px; margin: 0; letter-spacing: .08em; text-transform: uppercase; }
+.brand small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: none; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 600 11px var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line-2);
+  color: var(--muted); white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; }
+.chip.on { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.chip.on::before, .chip.off::before { content: "●"; margin-right: 5px; }
+.chip.on::before { color: var(--ok); }
+.chip.off::before { color: var(--dim); }
+.chip.warn { border-color: var(--warn); color: var(--warn); }
+.speed { display: flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.speed button { background: none; border: 0; padding: 5px 10px; font: 600 12px var(--mono); color: var(--muted); }
+.speed button.active { background: var(--accent); color: #04121c; }
+.btn { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 12px;
+  font-weight: 600; font-size: 13px; transition: border-color .15s, background .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #04121c; border-color: var(--accent); }
+.btn.danger { background: color-mix(in srgb, var(--bad) 18%, var(--panel-2)); border-color: var(--bad); }
+.btn.good { background: color-mix(in srgb, var(--ok) 18%, var(--panel-2)); border-color: var(--ok); }
+#voiceBtn.on { border-color: var(--ok); color: var(--ok); }
+
+/* ---------- layout ---------- */
+main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; padding: 14px 16px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.panel > h2 { margin: 0; padding: 10px 14px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+.panel > h2 .count { margin-left: auto; font-family: var(--mono); color: var(--text); }
+
+/* ---------- 3D scene ---------- */
+#scenePanel { position: relative; height: 440px; overflow: hidden;
+  background: radial-gradient(ellipse at center, #0e1b33 0%, var(--bg) 70%); }
+#scene { position: absolute; inset: 0; }
+#scene canvas { display: block; cursor: grab; }
+#scene canvas:active { cursor: grabbing; }
+#labels { position: absolute; inset: 0; pointer-events: none; }
+.nlabel { position: absolute; transform: translate(-50%, -150%); font: 600 11px var(--mono); padding: 2px 6px;
+  border-radius: 6px; background: rgba(6,10,18,.75); border: 1px solid var(--line-2); white-space: nowrap;
+  pointer-events: auto; cursor: pointer; transition: border-color .2s; }
+.nlabel.sel { border-color: var(--accent); color: var(--accent); }
+.nlabel.alert { border-color: var(--bad); color: #fff; background: rgba(80,10,20,.85); }
+.scene-legend { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: var(--muted);
+  display: flex; gap: 12px; flex-wrap: wrap; pointer-events: none; }
+.scene-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.scene-title { position: absolute; left: 14px; top: 10px; font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.scene-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+
+/* ---------- channel cards ---------- */
+#channels { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; padding: 12px; }
+.ch { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 6px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.ch:hover { border-color: var(--line-2); }
+.ch.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.ch.alert { border-color: var(--bad); box-shadow: 0 0 16px -4px var(--bad); }
+.ch .top { display: flex; align-items: baseline; gap: 6px; }
+.ch .id { font: 600 13px var(--mono); }
+.ch .sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch .sur { margin-left: auto; font: 600 11px var(--mono); }
+.ch canvas { width: 100%; height: 42px; display: block; margin-top: 4px; }
+
+/* ---------- detail ---------- */
+#detail .body { padding: 12px 14px; display: grid; gap: 10px; }
+#detail canvas { width: 100%; height: 170px; display: block; }
+.detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.detail-head .big { font: 600 20px var(--mono); }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.controls .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-right: 4px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: 3px; border-radius: 2px; }
+
+/* ---------- incidents ---------- */
+#incidents { padding: 10px; display: flex; flex-direction: column; gap: 10px; max-height: 620px; overflow-y: auto; }
+.empty { color: var(--dim); text-align: center; padding: 22px 8px; font-size: 13px; }
+.inc { border: 1px solid var(--line-2); border-left: 3px solid var(--muted); border-radius: 8px;
+  background: var(--panel-2); padding: 10px 12px; animation: slidein .3s ease; }
+@keyframes slidein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.inc.sev-low { border-left-color: var(--ok); }
+.inc.sev-medium { border-left-color: var(--warn); }
+.inc.sev-high { border-left-color: var(--bad); }
+.inc.closed { opacity: .6; }
+.inc .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.inc .title { font: 600 13px var(--mono); }
+.inc .time { margin-left: auto; font: 11px var(--mono); color: var(--dim); }
+.badge { font: 600 10px var(--mono); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line-2);
+  color: var(--muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.badge.status { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.badge.status.urgent { color: var(--warn); border-color: var(--warn); animation: blink 1.2s infinite; }
+.badge.syn { color: var(--syn); border-color: color-mix(in srgb, var(--syn) 55%, transparent); }
+.badge.nasa { color: var(--nasa); border-color: color-mix(in srgb, var(--nasa) 55%, transparent); }
+.badge.ai { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+@keyframes blink { 50% { opacity: .45; } }
+.inc .cause { margin: 8px 0 6px; font-size: 13px; }
+.inc .meta { font: 11px var(--mono); color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.inc .act { margin-top: 8px; padding: 8px; border-radius: 6px; background: rgba(76,201,240,.06);
+  border: 1px dashed var(--line-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inc .act .what { font-weight: 600; font-size: 13px; }
+.countdown { font: 600 13px var(--mono); color: var(--warn); }
+.bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; flex-basis: 100%; }
+.bar > div { height: 100%; background: var(--warn); transition: width .25s linear; }
+.analyzing { display: inline-flex; gap: 3px; }
+.analyzing i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: dot 1s infinite; }
+.analyzing i:nth-child(2) { animation-delay: .15s; } .analyzing i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 50% { opacity: .2; transform: translateY(-2px); } }
+
+/* ---------- log ---------- */
+#log { list-style: none; margin: 0; padding: 6px 0; max-height: 330px; overflow-y: auto; font-size: 12px; }
+#log li { padding: 5px 14px; display: grid; grid-template-columns: 62px 1fr; gap: 8px; border-bottom: 1px solid rgba(28,42,64,.5); }
+#log li .t { font: 11px var(--mono); color: var(--dim); }
+#log li.k-anomaly_detected, #log li.k-escalated { color: #ffb3ba; }
+#log li.k-action_taken, #log li.k-closed { color: #a8f0cf; }
+#log li.k-fault_injected { color: #e2c7f5; }
+#log li .tag { font: 600 10px var(--mono); color: var(--muted); margin-left: 6px; }
+
+/* ---------- caption + footer ---------- */
+#caption { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 30;
+  width: min(760px, calc(100% - 32px)); background: rgba(8,14,26,.94); border: 1px solid var(--line-2);
+  border-radius: 12px; padding: 10px 16px; display: flex; gap: 12px; align-items: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,.5); transition: opacity .4s, transform .4s; }
+#caption.hidden { opacity: 0; transform: translate(-50%, 10px); pointer-events: none; }
+#caption .wave { display: flex; gap: 2px; align-items: center; height: 18px; }
+#caption .wave i { width: 3px; background: var(--accent); border-radius: 2px; height: 30%; }
+#caption.speaking .wave i { animation: wave .8s infinite ease-in-out; }
+#caption .wave i:nth-child(2) { animation-delay: .1s; } #caption .wave i:nth-child(3) { animation-delay: .2s; }
+#caption .wave i:nth-child(4) { animation-delay: .3s; }
+@keyframes wave { 50% { height: 100%; } }
+#caption .who { font: 600 10px var(--mono); color: var(--accent); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+#caption .txt { font-size: 15px; }
+footer { padding: 12px 16px 90px; font-size: 11px; color: var(--muted);
+  border-top: 1px solid var(--line); text-align: center; }
+#toast { position: fixed; top: 64px; right: 16px; z-index: 40; display: flex; flex-direction: column; gap: 8px; }
+#toast div { background: var(--panel-2); border: 1px solid var(--line-2); border-left: 3px solid var(--warn);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; max-width: 340px; animation: slidein .25s; }
+#conn { font: 600 11px var(--mono); }
+#conn.ok { color: var(--ok); } #conn.bad { color: var(--bad); }
+
+@media (max-width: 1100px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  #scenePanel { height: 360px; }
+  #incidents { max-height: none; }
+}
+@media (max-width: 600px) {
+  header { gap: 8px; }
+  .brand small { display: none; }
+  #scenePanel { height: 300px; }
+  #channels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #caption .txt { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <div><h1>Mission Control AI</h1><small>Always-on AI flight controller · NASA SMAP / MSL telemetry</small></div>
+  </div>
+  <div class="chips">
+    <span class="chip" id="chipData">data <b>…</b></span>
+    <span class="chip off" id="chipGemini">Gemini <b>off</b></span>
+    <span class="chip off" id="chipVoice">Voice <b>off</b></span>
+    <span class="chip off" id="chipStore">Storage <b>memory</b></span>
+    <span class="chip" id="conn">connecting…</span>
+  </div>
+  <div class="speed" id="speed" role="group" aria-label="Replay speed">
+    <button data-s="1">1×</button><button data-s="5">5×</button><button data-s="20">20×</button>
+  </div>
+  <button class="btn" id="voiceBtn" title="Browsers only play audio after you click">🔈 Enable voice</button>
+</header>
+
+<main>
+  <div class="col">
+    <section class="panel" id="scenePanel" aria-label="3D telemetry view">
+      <div id="scene"></div>
+      <div id="labels"></div>
+      <div class="scene-title">Live constellation · drag to rotate · click a channel</div>
+      <div class="scene-legend">
+        <span><i style="background:var(--ok)"></i>nominal</span>
+        <span><i style="background:var(--warn)"></i>elevated</span>
+        <span><i style="background:var(--bad)"></i>anomaly</span>
+        <span>inner ring SMAP · outer ring MSL</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Telemetry channels <span class="count" id="chCount"></span></h2>
+      <div id="channels"></div>
+    </section>
+
+    <section class="panel" id="detail">
+      <h2>Channel detail <span class="count" id="detailId">—</span></h2>
+      <div class="body">
+        <div class="detail-head">
+          <span class="big" id="dId">—</span>
+          <span class="muted" id="dSub"></span>
+          <span class="badge" id="dCraft"></span>
+          <span class="muted mono" id="dSur" style="margin-left:auto"></span>
+        </div>
+        <canvas id="detailChart"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>value</span>
+          <span><i style="background:var(--syn)"></i>synthetic fault</span>
+          <span><i style="background:rgba(91,155,255,.45)"></i>NASA labeled anomaly window</span>
+          <span><i style="background:var(--warn)"></i>surprise score</span>
+          <span><i style="background:var(--bad)"></i>threshold</span>
+        </div>
+        <div class="controls">
+          <span class="lbl">Inject synthetic fault</span>
+          <button class="btn" data-fault="spike">Spike</button>
+          <button class="btn" data-fault="drift">Drift</button>
+          <button class="btn" data-fault="flatline" id="flatBtn">Flatline</button>
+          <span class="lbl" style="margin-left:10px">Real data</span>
+          <button class="btn" id="replayBtn" title="Jump to ~20 s before a NASA labeled anomaly on this channel">Replay NASA anomaly</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <h2>Incidents <span class="count" id="incCount">0 open</span></h2>
+      <div id="incidents"><div class="empty">All channels nominal. Inject a fault to see the flight director work.</div></div>
+    </section>
+    <section class="panel">
+      <h2>Mission log</h2>
+      <ul id="log"></ul>
+    </section>
+  </div>
+</main>
+
+<div id="caption" class="hidden" aria-live="polite">
+  <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <span class="who">Flight director</span>
+  <span class="txt" id="captionTxt"></span>
+</div>
+<div id="toast"></div>
+
+<footer>
+  Real NASA SMAP/MSL telemetry (anonymized, scaled to −1..1), replayed faster than real time ·
+  Live demo uses a curated set of 10 channels (M-6 and S-2 excluded); precision/recall are reported on all 82 ·
+  <span style="color:var(--syn)">Synthetic faults</span> are labeled · All spacecraft commands are simulated ·
+  Only P = Power and R = Radiation are documented groups
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+// =====================================================================
+//  State
+// =====================================================================
+const N = 400; // points kept per channel
+const S = {
+  channels: {}, order: [], buf: {}, incidents: {}, log: [],
+  selected: null, threshold: 4, vetoSeconds: 30, clockOffset: 0,
+  speed: 1, voiceOn: false, stuck: {}, dataMode: "…",
+};
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const serverNow = () => Date.now() / 1000 + S.clockOffset;
+const fmtTime = (ts) => new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const COLORS = {};
+["--accent", "--ok", "--warn", "--bad", "--syn", "--nasa", "--line", "--muted", "--dim"].forEach((k) => (COLORS[k.slice(2)] = css(k)));
+
+function toast(msg) {
+  const d = document.createElement("div");
+  d.textContent = msg;
+  $("#toast").appendChild(d);
+  setTimeout(() => d.remove(), 4500);
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  let body = null;
+  try { body = await r.json(); } catch { /* empty */ }
+  if (!r.ok) throw new Error((body && body.detail) || `${r.status} ${r.statusText}`);
+  return body;
+}
+
+// =====================================================================
+//  Channel buffers
+// =====================================================================
+function initBuf(cid, h) {
+  S.buf[cid] = { i: h ? h.i.slice(-N) : [], v: h ? h.v.slice(-N) : [], s: h ? h.s.slice(-N) : [], x: h ? h.v.slice(-N).map(() => 0) : [] };
+}
+function pushReadings(cid, d) {
+  const b = S.buf[cid];
+  if (!b) return;
+  for (const k of ["i", "v", "s", "x"]) {
+    const arr = d[k] || [];
+    for (let j = 0; j < arr.length; j++) b[k].push(k === "x" ? (arr[j] ? 1 : 0) : arr[j]);
+    if (b[k].length > N) b[k].splice(0, b[k].length - N);
+  }
+}
+const lastSurprise = (cid) => { const s = S.buf[cid]?.s; return s && s.length ? s[s.length - 1] : 0; };
+function inLabel(cid, idx) {
+  const w = S.channels[cid]?.labeled_anomalies || [];
+  for (const [a, b] of w) if (idx >= a && idx <= b) return true;
+  return false;
+}
+function openIncidentFor(cid) {
+  for (const inc of Object.values(S.incidents)) if (inc.channel === cid && inc.status !== "closed") return inc;
+  return null;
+}
+const groupName = (c) => c.subsystem; // server already uses Power / Radiation / "Group X"
+
+// =====================================================================
+//  2D charts
+// =====================================================================
+function sizeCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+function drawSeries(ctx, cid, x0, y0, w, h, { lineWidth = 1.4, labels = true } = {}) {
+  const b = S.buf[cid];
+  if (!b || b.v.length < 2) return;
+  const n = b.v.length;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of b.v) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const pad = Math.max((hi - lo) * 0.15, 0.1);
+  lo -= pad; hi += pad;
+  const X = (j) => x0 + (j / (N - 1)) * w + (N - n) / (N - 1) * w;
+  const Y = (v) => y0 + h - ((v - lo) / (hi - lo)) * h;
+  if (labels) { // NASA labeled anomaly windows
+    ctx.fillStyle = "rgba(91,155,255,.16)";
+    for (let j = 0; j < n; j++) if (inLabel(cid, b.i[j])) ctx.fillRect(X(j), y0, w / (N - 1) + 0.5, h);
+  }
+  ctx.lineWidth = lineWidth; ctx.lineJoin = "round";
+  for (let j = 1; j < n; j++) {
+    ctx.strokeStyle = b.x[j] ? COLORS.syn : COLORS.accent;
+    ctx.beginPath(); ctx.moveTo(X(j - 1), Y(b.v[j - 1])); ctx.lineTo(X(j), Y(b.v[j])); ctx.stroke();
+  }
+}
+
+function drawSpark(cv, cid) {
+  const { ctx, w, h } = sizeCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  drawSeries(ctx, cid, 0, 2, w, h - 4);
+}
+
+function drawDetail() {
+  const cv = $("#detailChart"), cid = S.selected;
+  const { ctx, w, h } = sizeCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  if (!cid || !S.buf[cid]) return;
+  const top = h * 0.66, gap = 10;
+  ctx.strokeStyle = COLORS.line; ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, top - 1);
+  drawSeries(ctx, cid, 4, 6, w - 8, top - 12, { lineWidth: 1.8 });
+  // surprise subplot
+  const b = S.buf[cid], n = b.s.length, y0 = top + gap, sh = h - y0 - 2;
+  const max = Math.max(S.threshold * 1.6, ...b.s.slice(-N)) || 1;
+  const X = (j) => 4 + ((j + N - n) / (N - 1)) * (w - 8);
+  const Y = (s) => y0 + sh - (Math.min(s, max) / max) * sh;
+  ctx.strokeStyle = COLORS.line; ctx.strokeRect(0.5, y0 + 0.5, w - 1, sh);
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = COLORS.bad;
+  ctx.beginPath(); ctx.moveTo(0, Y(S.threshold)); ctx.lineTo(w, Y(S.threshold)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(255,181,71,.18)"; ctx.strokeStyle = COLORS.warn; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(X(0), y0 + sh);
+  for (let j = 0; j < n; j++) ctx.lineTo(X(j), Y(b.s[j]));
+  ctx.lineTo(X(n - 1), y0 + sh); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  for (let j = 0; j < n; j++) (j ? ctx.lineTo : ctx.moveTo).call(ctx, X(j), Y(b.s[j]));
+  ctx.stroke();
+  ctx.fillStyle = COLORS.muted; ctx.font = "10px JetBrains Mono, monospace";
+  ctx.fillText(`threshold ${S.threshold}`, 8, Y(S.threshold) - 4);
+}
+
+// =====================================================================
+//  Channel cards
+// =====================================================================
+function buildChannels() {
+  const box = $("#channels");
+  box.innerHTML = "";
+  for (const cid of S.order) {
+    const c = S.channels[cid];
+    const el = document.createElement("div");
+    el.className = "ch"; el.dataset.cid = cid;
+    el.innerHTML = `<div class="top"><span class="id">${esc(cid)}</span><span class="sub">${esc(groupName(c))} · ${esc(c.spacecraft)}</span>
+      <span class="sur" data-sur>0.0</span></div><canvas></canvas>`;
+    el.onclick = () => select(cid);
+    box.appendChild(el);
+  }
+  $("#chCount").textContent = `${S.order.length} live`;
+}
+
+function surColor(s) { return s >= S.threshold ? COLORS.bad : s >= S.threshold * 0.5 ? COLORS.warn : COLORS.ok; }
+
+function renderChannels() {
+  for (const el of document.querySelectorAll(".ch")) {
+    const cid = el.dataset.cid, s = lastSurprise(cid);
+    const sur = el.querySelector("[data-sur]");
+    sur.textContent = s.toFixed(1); sur.style.color = surColor(s);
+    el.classList.toggle("sel", cid === S.selected);
+    el.classList.toggle("alert", !!openIncidentFor(cid));
+    drawSpark(el.querySelector("canvas"), cid);
+  }
+}
+
+function select(cid) {
+  if (!S.channels[cid]) return;
+  S.selected = cid;
+  const c = S.channels[cid];
+  $("#dId").textContent = cid; $("#detailId").textContent = cid;
+  $("#dSub").textContent = groupName(c);
+  $("#dCraft").textContent = c.spacecraft;
+  const flat = $("#flatBtn");
+  const canFlat = S.stuck[cid] !== false;
+  flat.disabled = !canFlat;
+  flat.title = canFlat ? "Freeze the reading" : `${cid} is often flat in training data, so the detector can't tell a frozen sensor from normal. Try P-1, S-1, G-1, P-10 or C-1.`;
+  $("#replayBtn").disabled = !(c.labeled_anomalies || []).length;
+  Scene3D.setSelected(cid);
+  renderChannels();
+}
+
+// =====================================================================
+//  Incidents
+// =====================================================================
+const STATUS = {
+  detected: "Detected", analyzing: "AI analyzing", diagnosed: "Diagnosed", veto_window: "Veto window",
+  awaiting_approval: "Needs approval", monitoring: "Monitoring recovery", escalated: "Escalated", closed: "Closed",
+};
+function tagBadge(inc) {
+  if (inc.source === "synthetic") return `<span class="badge syn">Synthetic fault</span>`;
+  if (inc.source === "sample-replay") return `<span class="badge nasa">NASA anomaly replay</span>`;
+  if (inc.source === "labeled-anomaly") return `<span class="badge nasa">Real NASA labeled anomaly</span>`;
+  return `<span class="badge" title="Detected outside NASA's labeled windows: may be a false alarm or an early catch">Outside NASA labels</span>`;
+}
+function aiBadge(d) {
+  if (!d) return "";
+  const g = String(d.source || "").startsWith("gemini");
+  return `<span class="badge ${g ? "ai" : ""}" title="${esc(d.source)}">${g ? "Gemini" : "Rule-based"}</span>`;
+}
+
+function incCard(inc) {
+  const d = inc.diagnosis, sev = d?.severity || "";
+  const urgent = inc.status === "veto_window" || inc.status === "awaiting_approval";
+  let act = "";
+  if (inc.status === "detected" || inc.status === "analyzing") {
+    act = `<div class="act"><span class="analyzing"><i></i><i></i><i></i></span><span class="muted">Flight director checking related channels…</span></div>`;
+  } else if (inc.status === "veto_window") {
+    act = `<div class="act"><span class="what">${esc(inc.action_label)}</span>
+      <span class="countdown" data-deadline="${inc.deadline}">--</span>
+      <button class="btn danger" data-cancel="${esc(inc.id)}" style="margin-left:auto">Cancel</button>
+      <div class="bar"><div data-bar="${inc.deadline}"></div></div></div>`;
+  } else if (inc.status === "awaiting_approval") {
+    act = `<div class="act"><span class="what">${esc(inc.action_label)}?</span>
+      <span class="muted" style="font-size:12px">Tier 3: the AI never does this alone</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn good" data-approve="${esc(inc.id)}">Approve</button>
+        <button class="btn danger" data-decline="${esc(inc.id)}">Decline</button></span></div>`;
+  } else if (inc.action_label) {
+    const done = inc.status === "closed" ? (inc.outcome || "closed") : STATUS[inc.status];
+    act = `<div class="act"><span class="what">${esc(inc.action_label)}</span><span class="muted">→ ${esc(done)}</span></div>`;
+  }
+  return `<div class="inc sev-${esc(sev)} ${inc.status === "closed" ? "closed" : ""}" data-inc="${esc(inc.id)}">
+    <div class="row"><span class="title">${esc(inc.channel)} · ${esc(inc.shape || "anomaly")}</span>
+      <span class="badge status ${urgent ? "urgent" : ""}">${esc(STATUS[inc.status] || inc.status)}</span>
+      <span class="time">${esc(inc.id)} · ${fmtTime(inc.opened_at)}</span></div>
+    <div class="row" style="margin-top:6px">${tagBadge(inc)}${aiBadge(d)}
+      ${sev ? `<span class="badge">${esc(sev)} severity</span>` : ""}
+      ${inc.tier ? `<span class="badge">tier ${inc.tier}</span>` : ""}</div>
+    ${d ? `<div class="cause">${esc(d.likely_cause)}</div>` : ""}
+    <div class="meta"><span>${esc(inc.subsystem)} · ${esc(inc.spacecraft)}</span><span>peak surprise ${Number(inc.peak_surprise || 0).toFixed(1)}</span>
+      ${d ? `<span>confidence ${esc(d.confidence)}</span>` : ""}</div>
+    ${act}</div>`;
+}
+
+function renderIncidents() {
+  const all = Object.values(S.incidents).sort((a, b) => b.opened_at - a.opened_at);
+  const open = all.filter((i) => i.status !== "closed");
+  const recent = all.filter((i) => i.status === "closed").slice(0, 6);
+  $("#incCount").textContent = `${open.length} open`;
+  const box = $("#incidents");
+  box.innerHTML = open.length || recent.length
+    ? open.map(incCard).join("") + (recent.length ? `<div class="muted" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 2px">Recently closed</div>` + recent.map(incCard).join("") : "")
+    : `<div class="empty">All channels nominal. Inject a fault to see the flight director work.</div>`;
+  tickCountdowns();
+}
+
+function tickCountdowns() {
+  const now = serverNow();
+  for (const el of document.querySelectorAll("[data-deadline]")) {
+    const left = Math.max(0, Number(el.dataset.deadline) - now);
+    el.textContent = `executes in ${Math.ceil(left)} s`;
+  }
+  for (const el of document.querySelectorAll("[data-bar]")) {
+    const left = Math.max(0, Number(el.dataset.bar) - now);
+    el.style.width = `${(left / S.vetoSeconds) * 100}%`;
+  }
+}
+
+$("#incidents").addEventListener("click", async (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  const [id, dec] = t.dataset.cancel ? [t.dataset.cancel, "cancel"] : t.dataset.approve ? [t.dataset.approve, "approve"]
+    : t.dataset.decline ? [t.dataset.decline, "decline"] : [null, null];
+  if (!id) return;
+  t.disabled = true;
+  try { upsertIncident(await api(`/api/incidents/${id}/${dec}`, { method: "POST" })); }
+  catch (err) { toast(err.message); t.disabled = false; }
+});
+$("#incidents").addEventListener("click", (e) => {
+  const card = e.target.closest(".inc");
+  if (card && !e.target.closest("button")) { const inc = S.incidents[card.dataset.inc]; if (inc) select(inc.channel); }
+});
+
+function upsertIncident(inc) {
+  if (!inc) return;
+  S.incidents[inc.id] = inc;
+  renderIncidents();
+}
+
+// =====================================================================
+//  Mission log
+// =====================================================================
+function addLog(ev, prepend = true) {
+  const li = document.createElement("li");
+  li.className = `k-${ev.kind}`;
+  li.innerHTML = `<span class="t">${fmtTime(ev.ts)}</span><span>${esc(ev.message)}${ev.tag ? `<span class="tag">${esc(ev.tag)}</span>` : ""}</span>`;
+  const ul = $("#log");
+  prepend ? ul.prepend(li) : ul.appendChild(li);
+  while (ul.children.length > 120) ul.lastChild.remove();
+}
+
+// =====================================================================
+//  Voice: ordered playback, ElevenLabs mp3 -> speechSynthesis fallback
+// =====================================================================
+const Voice = {
+  q: [], busy: false, hideTimer: null,
+  add(m) {
+    if (!S.voiceOn) { this.caption(m.text, false); return; }
+    this.q.push(m);
+    while (this.q.length > 5) { // keep up: drop the oldest low-priority line, else the oldest
+      const k = this.q.findIndex((x) => x.priority === "low");
+      this.q.splice(k >= 0 ? k : 0, 1);
+    }
+    this.next();
+  },
+  next() {
+    if (this.busy || !this.q.length) return;
+    this.busy = true;
+    const m = this.q.shift();
+    this.caption(m.text, true);
+    this.play(m).finally(() => { this.busy = false; $("#caption").classList.remove("speaking"); this.next(); });
+  },
+  play(m) {
+    return new Promise((done) => {
+      let fell = false;
+      const fallback = () => { if (!fell) { fell = true; this.speak(m.text).then(done); } };
+      if (m.audio_url) {
+        const a = new Audio(m.audio_url);
+        a.onended = done; a.onerror = fallback;
+        a.play().catch(fallback);
+        setTimeout(done, 15000);
+      } else fallback();
+    });
+  },
+  speak(text) {
+    return new Promise((done) => {
+      if (!("speechSynthesis" in window)) return setTimeout(done, 1500);
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05; u.onend = done; u.onerror = done;
+      speechSynthesis.speak(u);
+      setTimeout(done, 9000);
+    });
+  },
+  caption(text, speaking) {
+    const c = $("#caption");
+    $("#captionTxt").textContent = text;
+    c.classList.remove("hidden");
+    c.classList.toggle("speaking", speaking);
+    clearTimeout(this.hideTimer);
+    this.hideTimer = setTimeout(() => { if (!this.busy) c.classList.add("hidden"); }, 7000);
+  },
+};
+$("#voiceBtn").onclick = () => {
+  S.voiceOn = !S.voiceOn;
+  const b = $("#voiceBtn");
+  b.classList.toggle("on", S.voiceOn);
+  b.textContent = S.voiceOn ? "🔊 Voice on" : "🔈 Enable voice";
+  if (!S.voiceOn) { Voice.q = []; try { speechSynthesis.cancel(); } catch { /* none */ } }
+  else Voice.caption("Voice enabled. The flight director will speak each step.", false);
+};
+
+// =====================================================================
+//  Controls
+// =====================================================================
+function renderSpeed() {
+  for (const b of document.querySelectorAll("#speed button")) b.classList.toggle("active", Number(b.dataset.s) === S.speed);
+}
+$("#speed").addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  try { S.speed = (await api("/api/control/speed", { method: "POST", body: JSON.stringify({ speed: Number(b.dataset.s) }) })).speed; renderSpeed(); }
+  catch (err) { toast(err.message); }
+});
+for (const b of document.querySelectorAll("[data-fault]")) {
+  b.onclick = async () => {
+    if (!S.selected) return toast("Pick a channel first.");
+    b.disabled = true;
+    try { await api("/api/faults", { method: "POST", body: JSON.stringify({ channel: S.selected, type: b.dataset.fault }) }); }
+    catch (err) { toast(err.message); }
+    finally { setTimeout(() => select(S.selected), 600); }
+  };
+}
+$("#replayBtn").onclick = async () => {
+  if (!S.selected) return;
+  try { await api(`/api/replay?channel=${encodeURIComponent(S.selected)}&which=0`, { method: "POST" }); }
+  catch (err) { toast(err.message); }
+};
+
+// =====================================================================
+//  Health chips
+// =====================================================================
+function setChip(id, on, html, warn = false) {
+  const el = $(id);
+  el.className = `chip ${on ? "on" : "off"}${warn ? " warn" : ""}`;
+  el.innerHTML = html;
+}
+async function pollHealth() {
+  try {
+    const h = await api("/api/health");
+    S.dataMode = h.data_mode;
+    $("#chipData").innerHTML = `data <b>${esc(h.data_mode === "real" ? "real NASA" : "SIMULATED")}</b>`;
+    const g = h.gemini || {};
+    const used = g.daily_used ?? 0, lim = g.daily_limit;
+    setChip("#chipGemini", g.enabled, g.enabled ? `Gemini <b>${used}/${lim ?? "∞"}</b> today` : "Gemini <b>off · rules</b>",
+      g.enabled && lim && used >= lim - 2);
+    const v = h.voice || {};
+    setChip("#chipVoice", v.enabled, v.enabled ? `ElevenLabs <b>${v.generated + v.cache_hits}</b> lines` : "Voice <b>captions</b>");
+    const st = h.storage || {};
+    setChip("#chipStore", st.mode !== "memory", st.mode === "memory" ? "Storage <b>memory</b>"
+      : `Tiger Data <b>${st.timescale ? "hypertables" : "postgres"}</b>`);
+    if (h.speed && h.speed !== S.speed) { S.speed = h.speed; renderSpeed(); }
+  } catch { /* server down: ws status shows it */ }
+}
+
+// =====================================================================
+//  3D constellation (three.js r128)
+// =====================================================================
+const Scene3D = (() => {
+  const nodes = {};
+  let renderer, scene, camera, root, core, coreGlow, raycaster, pointer, selected = null;
+  let dragging = false, lastX = 0, lastY = 0, rotY = 0, rotX = 0.1, velY = 0.0015, idleFor = 99;
+  const host = document.getElementById("scene"), labels = document.getElementById("labels");
+
+  function ok() { return !!window.THREE; }
+
+  function init() {
+    if (!ok()) {
+      host.innerHTML = `<div class="scene-fallback">3D view unavailable (three.js failed to load). Everything else still works.</div>`;
+      return;
+    }
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    host.appendChild(renderer.domElement);
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x060a12, 0.035);
+    camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+    camera.position.set(0, 0, 19);
+    root = new THREE.Group();
+    scene.add(root);
+    scene.add(new THREE.AmbientLight(0x6688aa, 0.6));
+    const key = new THREE.PointLight(0x4cc9f0, 1.4, 60); key.position.set(0, 0, 0); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(5, 10, 8); scene.add(fill);
+
+    // stars
+    const sg = new THREE.BufferGeometry(), sp = [];
+    for (let k = 0; k < 900; k++) {
+      const r = 40 + Math.random() * 60, t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+      sp.push(r * Math.sin(p) * Math.cos(t), r * Math.sin(p) * Math.sin(t), r * Math.cos(p));
+    }
+    sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
+    scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x8fb3ff, size: 0.18, transparent: true, opacity: 0.7 })));
+
+    // core: the flight director
+    core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1),
+      new THREE.MeshBasicMaterial({ color: 0x4cc9f0, wireframe: true, transparent: true, opacity: 0.55 }));
+    coreGlow = new THREE.Mesh(new THREE.SphereGeometry(0.75, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0.85 }));
+    root.add(core, coreGlow);
+
+    // orbit rings
+    for (const r of [5, 7.6]) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.015, r + 0.015, 160),
+        new THREE.MeshBasicMaterial({ color: 0x26385a, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+      ring.rotation.x = Math.PI / 2;
+      root.add(ring);
+    }
+
+    raycaster = new THREE.Raycaster(); pointer = new THREE.Vector2();
+    const cv = renderer.domElement;
+    cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; idleFor = 0; cv.setPointerCapture(e.pointerId); cv._moved = 0; });
+    cv.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      cv._moved += Math.abs(dx) + Math.abs(dy);
+      rotY += dx * 0.006; rotX = Math.max(-0.5, Math.min(0.8, rotX + dy * 0.004));
+      velY = dx * 0.0006; lastX = e.clientX; lastY = e.clientY;
+    });
+    cv.addEventListener("pointerup", (e) => { dragging = false; if (cv._moved < 6) pick(e); });
+    new ResizeObserver(resize).observe(host);
+    resize();
+  }
+
+  function resize() {
+    if (!renderer) return;
+    const w = host.clientWidth, h = host.clientHeight;
+    renderer.setSize(w, h, false);
+    renderer.domElement.style.width = w + "px"; renderer.domElement.style.height = h + "px";
+    camera.aspect = w / Math.max(h, 1);
+    const dist = w < 600 ? 19 : 14; // elevated view so both orbits read as rings
+    camera.position.set(0, dist * 0.42, dist);
+    camera.lookAt(0, -0.6, 0);
+    camera.updateProjectionMatrix();
+  }
+
+  function pick(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(Object.values(nodes).map((n) => n.mesh))[0];
+    if (hit) select(hit.object.userData.cid);
+  }
+
+  function build(order, channels) {
+    for (const n of Object.values(nodes)) { root.remove(n.group); n.label.remove(); }
+    for (const k of Object.keys(nodes)) delete nodes[k];
+    labels.innerHTML = "";
+    if (!ok() || !root) return;
+    const crafts = {};
+    for (const cid of order) (crafts[channels[cid].spacecraft] ||= []).push(cid);
+    const names = Object.keys(crafts).sort((a, b) => (a === "SMAP" ? -1 : b === "SMAP" ? 1 : a.localeCompare(b)));
+    names.forEach((craft, ri) => {
+      const list = crafts[craft], radius = ri === 0 ? 5 : 7.6;
+      list.forEach((cid, k) => {
+        const a = (k / list.length) * Math.PI * 2 + ri * 0.4;
+        const g = new THREE.Group();
+        g.position.set(Math.cos(a) * radius, Math.sin(k * 1.7) * 0.5, Math.sin(a) * radius);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x3ddc97, emissive: 0x3ddc97, emissiveIntensity: 0.6, roughness: 0.4 });
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), mat);
+        mesh.userData.cid = cid;
+        const halo = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.62, 48),
+          new THREE.MeshBasicMaterial({ color: 0xff5c6c, transparent: true, opacity: 0, side: THREE.DoubleSide }));
+        const selRing = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.52, 48),
+          new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0, side: THREE.DoubleSide }));
+        g.add(mesh, halo, selRing);
+        root.add(g);
+        const beamGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), g.position.clone()]);
+        const beam = new THREE.Line(beamGeo, new THREE.LineBasicMaterial({ color: 0x26385a, transparent: true, opacity: 0.5 }));
+        root.add(beam);
+        const label = document.createElement("div");
+        label.className = "nlabel"; label.textContent = cid;
+        label.onclick = () => select(cid);
+        labels.appendChild(label);
+        nodes[cid] = { group: g, mesh, mat, halo, selRing, beam, label, cur: new THREE.Color(0x3ddc97) };
+      });
+    });
+  }
+
+  const cOk = () => new THREE.Color(0x3ddc97), cWarn = () => new THREE.Color(0xffb547), cBad = () => new THREE.Color(0xff5c6c);
+
+  function frame(t, dt) {
+    if (!renderer) return;
+    idleFor += dt;
+    if (!dragging) { rotY += velY; velY += ((idleFor > 3 ? 0.0015 : 0) - velY) * 0.02; }
+    root.rotation.y = rotY; root.rotation.x = rotX * 0.6;
+    core.rotation.y += dt * 0.25; core.rotation.x += dt * 0.1;
+    let anyAlert = false;
+    const w = host.clientWidth, h = host.clientHeight, v = new THREE.Vector3();
+    for (const [cid, n] of Object.entries(nodes)) {
+      const s = lastSurprise(cid), r = Math.min(s / S.threshold, 1.5);
+      const target = r < 0.5 ? cOk().lerp(cWarn(), r / 0.5) : r < 1 ? cWarn().lerp(cBad(), (r - 0.5) / 0.5) : cBad();
+      n.cur.lerp(target, 0.15);
+      n.mat.color.copy(n.cur); n.mat.emissive.copy(n.cur);
+      const inc = openIncidentFor(cid), alert = !!inc;
+      anyAlert ||= alert;
+      n.mat.emissiveIntensity = 0.5 + Math.min(r, 1.2) * 0.9;
+      n.mesh.scale.setScalar(1 + Math.min(r, 1.5) * 0.35 + (alert ? Math.sin(t * 6) * 0.08 : 0));
+      const ph = (t * 0.9) % 1;
+      n.halo.material.opacity = alert ? (1 - ph) * 0.9 : 0;
+      n.halo.scale.setScalar(1 + ph * 1.8);
+      n.halo.lookAt(camera.position); n.selRing.lookAt(camera.position);
+      n.selRing.material.opacity = cid === selected ? 0.9 : 0;
+      n.beam.material.color.set(alert ? 0xff5c6c : cid === selected ? 0x4cc9f0 : 0x26385a);
+      n.beam.material.opacity = alert ? 0.5 + Math.sin(t * 8) * 0.4 : 0.5;
+      // screen-space label
+      n.group.getWorldPosition(v); v.project(camera);
+      const vis = v.z < 1;
+      n.label.style.display = vis ? "" : "none";
+      n.label.style.left = `${(v.x * 0.5 + 0.5) * w}px`; n.label.style.top = `${(-v.y * 0.5 + 0.5) * h}px`;
+      n.label.classList.toggle("sel", cid === selected);
+      n.label.classList.toggle("alert", alert);
+    }
+    coreGlow.material.color.set(anyAlert ? 0xff5c6c : 0x4cc9f0);
+    core.material.color.set(anyAlert ? 0xff8a95 : 0x4cc9f0);
+    const pulse = 1 + Math.sin(t * (anyAlert ? 5 : 1.6)) * (anyAlert ? 0.12 : 0.05);
+    coreGlow.scale.setScalar(pulse);
+    renderer.render(scene, camera);
+  }
+
+  return { init, build, frame, setSelected: (cid) => { selected = cid; } };
+})();
+
+// =====================================================================
+//  WebSocket
+// =====================================================================
+let ws, retry = 0;
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  const conn = $("#conn");
+  ws.onopen = () => { retry = 0; conn.textContent = "● live"; conn.className = "chip ok"; };
+  ws.onclose = () => {
+    conn.textContent = "● reconnecting"; conn.className = "chip bad";
+    setTimeout(connect, Math.min(1000 * 2 ** retry++, 10000));
+  };
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === "readings") {
+      if (m.t) S.clockOffset = m.t - Date.now() / 1000;
+      for (const [cid, d] of Object.entries(m.data)) pushReadings(cid, d);
+      if (m.speed && m.speed !== S.speed) { S.speed = m.speed; renderSpeed(); }
+    } else if (m.type === "event") {
+      addLog(m.event);
+      if (m.incident) upsertIncident(m.incident);
+    } else if (m.type === "voice") {
+      Voice.add(m);
+    } else if (m.type === "hello") {
+      onHello(m);
+    }
+  };
+}
+
+async function onHello(m) {
+  S.threshold = m.threshold ?? 4; S.vetoSeconds = m.veto_seconds ?? 30; S.speed = m.speed ?? 1;
+  S.channels = {}; S.order = [];
+  for (const c of m.channels) { S.channels[c.id] = c; S.order.push(c.id); initBuf(c.id, m.history?.[c.id]); }
+  S.incidents = {};
+  try { for (const inc of await api("/api/incidents?limit=20")) S.incidents[inc.id] = inc; } catch { /* ok */ }
+  for (const inc of m.incidents || []) S.incidents[inc.id] = inc;
+  try { for (const c of await api("/api/channels")) S.stuck[c.id] = c.detector?.stuck_check; } catch { /* ok */ }
+  $("#log").innerHTML = "";
+  for (const ev of m.log || []) addLog(ev, false);
+  buildChannels();
+  Scene3D.build(S.order, S.channels);
+  renderSpeed(); renderIncidents();
+  select(S.selected && S.channels[S.selected] ? S.selected : S.order[0]);
+  pollHealth();
+}
+
+// =====================================================================
+//  Main loop
+// =====================================================================
+let lastT = performance.now(), last2d = 0;
+function loop(now) {
+  const dt = Math.min((now - lastT) / 1000, 0.1); lastT = now;
+  Scene3D.frame(now / 1000, dt);
+  if (now - last2d > 100) { // 2D charts at ~10 fps
+    last2d = now;
+    renderChannels(); drawDetail(); tickCountdowns();
+    if (S.selected) {
+      const s = lastSurprise(S.selected);
+      $("#dSur").innerHTML = `surprise <b style="color:${surColor(s)}">${s.toFixed(2)}</b> / ${S.threshold}`;
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+Scene3D.init();
+connect();
+setInterval(pollHealth, 4000);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

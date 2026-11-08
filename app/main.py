@@ -22,6 +22,7 @@ from .data import load_channels
 from .hub import Hub
 from .incidents import Manager
 from .replay import FAULT_TYPES, Busy, Engine
+from .sim import PARTS, SCENARIOS, SENSORS, Satellite
 from .storage import Storage
 from .voice import Voice
 
@@ -80,9 +81,33 @@ async def lookup(cid: str, seconds: float) -> list[dict]:
     return rel
 
 
+async def sim_lookup(ids: list[str], minutes: float) -> list[dict]:
+    """The tool Gemini calls for SIM-1: sensor summaries over the last N mission minutes."""
+    from .sim import DT
+    n = max(5, min(int(minutes * 60 / DT), 3000))
+    out = []
+    for cid in ids:
+        st = A.engine.states.get(cid)
+        if not st or st.ch.kind != "sim":
+            out.append({"sensor": cid, "error": "unknown SIM-1 sensor"})
+            continue
+        h = A.engine.history(cid, n)
+        v = h["v"]
+        if not v:
+            out.append({"sensor": cid, "error": "no readings yet"})
+            continue
+        out.append({"sensor": cid, "name": st.ch.name, "units": st.ch.units, "minutes": round(len(v) * DT / 60, 1),
+                    "first": v[0], "latest": v[-1], "min": min(v), "max": max(v),
+                    "mean": round(sum(v) / len(v), 4), "normal_range": st.ch.normal_range()})
+    return out
+
+
 async def on_batch(batch, flags) -> None:
     now = time.time()
-    await A.hub.broadcast({"type": "readings", "t": now, "speed": A.engine.speed, "data": batch})
+    msg = {"type": "readings", "t": now, "speed": A.engine.speed, "mode": A.engine.mode, "data": batch}
+    if A.engine.sim and "sim" in A.engine.active:
+        msg["sim"] = A.engine.sim.brief()
+    await A.hub.broadcast(msg)
     if A.storage.pool:
         k = max(1, S.store_every)
         ts = datetime.fromtimestamp(now, timezone.utc)
@@ -101,9 +126,11 @@ async def lifespan(app: FastAPI):
     A.hub = Hub()
     A.storage = Storage(S.database_url)
     await A.storage.init()
-    A.engine = Engine(channels, S)
+    A.engine = Engine(channels, S, Satellite() if S.sim else None)
+    for c in A.engine.states.values():
+        A.channels.setdefault(c.ch.id, c.ch)  # SIM-1 sensors join the channel list
     A.agent = FlightDirector(S.gemini_api_key, S.gemini_model, S.gemini_rpm, S.gemini_timeout, S.cache_dir, lookup,
-                             sources=S.gemini_sources, daily_limit=S.gemini_daily_limit)
+                             sources=S.gemini_sources, daily_limit=S.gemini_daily_limit, sim_lookup=sim_lookup)
     A.voice = Voice(S.elevenlabs_api_key, S.elevenlabs_voice_id, S.elevenlabs_model, S.cache_dir / "audio")
     A.vq = VoiceQueue(A.voice, A.hub)
     A.manager = Manager(S, A.engine, A.agent, A.storage, A.hub.broadcast, A.vq.say)
@@ -111,7 +138,9 @@ async def lifespan(app: FastAPI):
     app.mount("/audio", StaticFiles(directory=S.cache_dir / "audio"), name="audio")
     tasks = [asyncio.create_task(c) for c in (A.engine.run(), A.vq.worker(), A.manager.heartbeat_loop(),
                                                A.storage.flush_loop(), A.voice.warm())]
-    await A.manager.event("system", f"Monitoring started on {len(channels)} channels ({A.data_mode} data).")
+    sim_note = f" plus {len(A.engine.sim_ids())} on simulated satellite SIM-1" if A.engine.sim else ""
+    await A.manager.event("system", f"Monitoring started on {len(channels)} channels ({A.data_mode} data){sim_note}. "
+                                    f"Streaming: {A.engine.mode}.")
     yield
     for t in tasks:
         t.cancel()
@@ -130,7 +159,10 @@ async def health():
         "status": "ok",
         "uptime_s": round(time.time() - A.engine.started, 1),
         "data_mode": A.data_mode,
-        "channels": len(A.channels),
+        "channels": sum(1 for c in A.channels.values() if c.kind == "nasa"),
+        "sim_channels": len(A.engine.sim_ids()),
+        "mode": A.engine.mode,
+        "sim": A.engine.sim.brief() if A.engine.sim else None,
         "speed": A.engine.speed,
         "open_incidents": len(A.manager.open_incidents()),
         "gemini": {"enabled": A.agent.enabled, "model": S.gemini_model if A.agent.enabled else None,
@@ -167,6 +199,79 @@ async def set_speed(body: SpeedIn):
 class FaultIn(BaseModel):
     channel: str
     type: str = Field(description=f"one of {FAULT_TYPES}")
+
+
+class ModeIn(BaseModel):
+    mode: str = Field(description="nasa | sim | both")
+
+
+@app.post("/api/control/mode")
+async def set_mode(body: ModeIn):
+    """Which source streams: NASA replay, the simulated satellite, or both."""
+    try:
+        mode = A.engine.set_mode(body.mode.strip().lower())
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    await A.manager.event("system", f"Streaming mode set to {mode}.")
+    return {"mode": mode}
+
+
+# ---------- SIM-1 (simulated satellite) ----------
+def _need_sim():
+    if not A.engine.sim:
+        raise HTTPException(404, "the simulated satellite is turned off (SIM=off)")
+
+
+@app.get("/api/sim")
+async def sim_status():
+    """Operator view of SIM-1: orbit, units, ops plan, timeline. Contains no answer key."""
+    _need_sim()
+    sc = A.engine.sim.scenario
+    return {**A.engine.sim.context(), "streaming": "sim" in A.engine.active,
+            "scenario": sc and {k: v for k, v in sc.items()},
+            "sensors": [{"id": s.id, "name": s.name, "subsystem": s.subsystem, "units": s.units,
+                         "part": s.part, "monitored": s.monitored} for s in SENSORS],
+            "parts": PARTS}
+
+
+@app.get("/api/sim/scenarios")
+async def sim_scenarios():
+    _need_sim()
+    return [{"key": k, "title": v["title"], "operator_hint": v["operator_hint"]} for k, v in SCENARIOS.items()]
+
+
+@app.post("/api/sim/scenarios/{key}")
+async def sim_start(key: str):
+    _need_sim()
+    if key not in SCENARIOS:
+        raise HTTPException(404, f"unknown scenario {key}; one of {sorted(SCENARIOS)}")
+    open_inc = A.manager.sim_open()
+    if open_inc:
+        raise HTTPException(409, f"SIM-1 already has an open incident ({open_inc.id}). Wait or reset the simulator.")
+    if "sim" not in A.engine.active:
+        A.engine.set_mode("sim" if A.engine.mode == "nasa" else A.engine.mode)
+    A.manager.clear_sim_cooldowns()
+    info = A.engine.sim_start(key)
+    skip = f" Skipped ahead {info['skipped_minutes']:g} mission minutes to the start point." if info["skipped_minutes"] else ""
+    await A.manager.event("scenario_started", f"Scenario started on SIM-1: {info['title']}.{skip}",
+                          tag="Simulated satellite scenario")
+    return info
+
+
+@app.post("/api/sim/reset")
+async def sim_reset():
+    _need_sim()
+    await A.manager.sim_reset()  # closes SIM-1 incidents and resets the physics together
+    await A.manager.event("system", "SIM-1 reset: all parts healthy, primary units active, normal mode.",
+                          tag="Simulated satellite")
+    return A.engine.sim.brief()
+
+
+@app.get("/api/sim/scoreboard")
+async def sim_scoreboard():
+    """Root-cause and action accuracy on SIM-1 scenarios, per diagnoser (rules vs Gemini)."""
+    _need_sim()
+    return A.manager.scoreboard()
 
 
 @app.post("/api/faults")
@@ -239,6 +344,10 @@ async def ws(websocket: WebSocket):
     hello = {
         "type": "hello",
         "data_mode": A.data_mode,
+        "mode": A.engine.mode,
+        "sim": A.engine.sim.brief() if A.engine.sim else None,
+        "scenarios": [{"key": k, "title": v["title"], "operator_hint": v["operator_hint"]}
+                      for k, v in SCENARIOS.items()] if A.engine.sim else [],
         "speed": A.engine.speed,
         "base_rate": S.base_rate,
         "threshold": S.z_threshold,

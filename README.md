@@ -1,9 +1,17 @@
 # Mission Control AI — backend
 
 An always-on AI flight controller for spacecraft telemetry (UB Hacking 2026, Radial Atoms track).
-It replays real NASA SMAP and Curiosity (MSL) telemetry, checks every reading for anomalies,
-has a Gemini "flight director" diagnose each one, and acts with bounded autonomy.
-Every step is spoken with ElevenLabs and saved to Tiger Data.
+It watches two sources at once:
+
+- **NASA replay:** real SMAP and Curiosity (MSL) telemetry. This proves the detector on real data
+  (precision and recall). The channels are anonymized and recorded, so diagnoses stay at group
+  level and commands can't change anything.
+- **SIM-1:** a fictional, clearly simulated satellite with named parts. This proves the decision
+  making: parts affect each other, commands really change what happens, and every fault scenario
+  has a known true cause to grade the flight director against.
+
+It checks every reading for anomalies, has a Gemini "flight director" diagnose each one, and
+acts with bounded autonomy. Every step is spoken with ElevenLabs and saved to Tiger Data.
 
 ## Quick start
 
@@ -65,6 +73,93 @@ approval request, it reminds every `REMIND_SECONDS` and never acts alone. Comman
 Requests are queued one at a time, kept under `GEMINI_RPM`, retried on 429 errors, and
 fall back to rules on any failure. Diagnoses for sample replays are cached for the demo.
 
+## Results
+
+**NASA detection** (`python scripts/evaluate.py`, saved to `results/eval_baseline.json`).
+
+- **Data:** every labeled channel. NASA's file has 82 rows; P-2 is listed twice, so this is 81 unique series and 105 labeled anomaly sequences.
+- **Detector:** the same baseline detector and settings as the live demo.
+- **Scoring:** event-level, Telemanom style. A labeled sequence counts as caught if any flagged run overlaps it. Flagged runs closer than 50 readings are merged.
+
+| | Precision | Recall | F1 |
+|---|---|---|---|
+| Our baseline detector, all 81 channels | 33.2% | 67.6% | 44.5% |
+| SMAP (54) | 31.7% | 66.7% | |
+| MSL (27) | 36.2% | 69.4% | |
+| Curated 10-channel demo set | 62.5% | 62.5% | |
+| *Reference: NASA Telemanom LSTM (Hundman et al., 2018)* | *87.5%* | *80.0%* | |
+
+The baseline catches two-thirds of real anomalies, but it raises too many false alarms. An LSTM
+forecaster behind the same `update() -> Result` interface is the planned upgrade. NASA's
+pretrained outputs are a reference only, never our detector.
+
+**SIM-1 decisions** (`GET /api/sim/scoreboard`). Naive rules found the true root cause in
+**3 of 6** scenarios. They fail exactly where the cause sits in a different part than the sensor
+that alarmed first: the imaging pass in eclipse, the solar array loss, and the stuck heater.
+
+## SIM-1, the simulated satellite
+
+A small Earth-orbiting satellite, fictional and labeled `SIMULATED` everywhere (`app/sim.py`).
+
+**Orbit.** A 95-minute orbit with 35 minutes in Earth's shadow, compressed to 3 minutes at 1×.
+
+**Sensors.** 11 sensors in physical units:
+
+| Subsystem | Sensors |
+|---|---|
+| Power | `SOLAR_I` (A), `BATT_V` (V), `LOAD_P` (W, context only) |
+| Thermal | `BATT_T`, `PANEL_T` (°C) |
+| Attitude | `WHEEL_RPM`, `WHEEL_I`, `WHEEL_T`, `POINT_ERR` |
+| Comms | `RADIO_SNR`, `TX_T` |
+
+**How parts affect each other.** Sunlight drives solar current, which charges the battery. The
+battery heater's thermostat reads the battery temperature sensor. A worn reaction wheel draws more
+current, heats up, and loses pointing.
+
+**Detection.** The same `BaselineDetector` is used as for NASA. It is calibrated on 8 healthy orbits,
+with values scaled to −1..1 over the training range (NASA's preprocessing). A persistence filter
+(`SIM_CONSECUTIVE=6` readings) gave 0 false alarms in 18 healthy test orbits.
+
+**Incidents.** One fault gives one incident. Every sensor that alarms while it is open is linked
+to it as a symptom, with timing.
+
+**Commands are real here.** For example:
+- `switch_to_backup` swaps unit A for B, for the wheel, the temperature sensor, the heater controller, or the radio.
+- `power_cycle_sensor` restarts a unit.
+- `shed_load` switches the payload off.
+- `safe_mode` turns the payload off and points the array at the sun.
+
+A command that can't help, such as "no backup battery", escalates.
+
+| Scenario | What the operator sees first | True cause | Correct action |
+|---|---|---|---|
+| `cosmic_ray` | Transmitter temperature spike | none (radiation glitch) | monitor |
+| `eclipse_imaging` | Battery voltage below normal, in eclipse | none (planned imaging pass) | monitor |
+| `wheel_friction` | Wheel current, speed, temperature, pointing | reaction wheel | switch wheel to backup |
+| `solar_degradation` | Battery voltage below normal, in sunlight | solar array | shed load / safe mode / call engineer |
+| `heater_stuck` | Battery temperature too high | heater controller | power cycle or switch heater controller |
+| `temp_sensor_frozen` | Battery temperature frozen | temperature sensor | switch to backup sensor (a reboot doesn't help) |
+
+**Flight director on SIM-1.** Gemini gets a spacecraft handbook (how the parts work and
+connect, but no fault signatures) and the full case file:
+- every symptom, with timing
+- all sensors against their normal ranges
+- the orbit, eclipse and ops plan
+- past incidents and which fixes worked
+
+It may call `get_sensor_history` before answering. It must name the **root-cause part**, the
+**part to act on**, the evidence, and a **plan B**. If the first fix fails (the command can't
+help, or nothing recovers within `SIM_VERIFY_MINUTES`), the agent runs plan B under the same
+autonomy tiers, with no extra Gemini request. Every SIM-1 incident ends with an after-action
+`report`. Each diagnosis costs 2 requests, the same as for NASA.
+
+**Answer key.** The true cause is never sent to the flight director. It appears in the incident
+(`truth`) only after the incident closes. `GET /api/sim/scoreboard` grades root cause and action
+per diagnoser (rules vs Gemini).
+
+**Rules baseline.** The rule-based baseline blames the part the first alarming sensor describes,
+with no knowledge of the orbit, the ops plan, or how parts affect each other.
+
 ## REST API
 
 | Method | Path | What it does |
@@ -73,6 +168,12 @@ fall back to rules on any failure. Diagnoses for sample replays are cached for t
 | GET | `/api/channels` | Channel list with spacecraft, group, labeled anomaly ranges |
 | GET | `/api/channels/{id}/history?n=300` | Recent values and surprise scores |
 | POST | `/api/control/speed` | `{"speed": 5}` (0.25–100) |
+| POST | `/api/control/mode` | `{"mode": "nasa" \| "sim" \| "both"}`: which source streams |
+| GET | `/api/sim` | SIM-1 status: orbit, eclipse, active units, ops plan, timeline (no answer key) |
+| GET | `/api/sim/scenarios` | The 6 fault scenarios |
+| POST | `/api/sim/scenarios/{key}` | Start one (409 while a SIM-1 incident is open) |
+| POST | `/api/sim/reset` | Healthy satellite again; closes open SIM-1 incidents |
+| GET | `/api/sim/scoreboard` | Root-cause and action accuracy, rules vs Gemini |
 | POST | `/api/faults` | `{"channel": "P-1", "type": "spike" \| "drift" \| "flatline"}` (synthetic) |
 | POST | `/api/replay?channel=P-1&which=0` | Jump to ~20 s before a real NASA labeled anomaly |
 | GET | `/api/incidents?open_only=true` | Incidents, newest first |
@@ -107,6 +208,10 @@ TimescaleDB is available (plain tables otherwise).
 - **Data:** real NASA SMAP/MSL telemetry from the Telemanom dataset, replayed faster than
   real time. Values are anonymized and scaled to -1..1, so diagnoses are at group level.
 - **Synthetic:** injected faults (tagged "Synthetic fault"), and all spacecraft commands.
+- **Simulated satellite:** SIM-1 is a fictional satellite we built during the event. Its physics,
+  sensors, fault scenarios and answer key are ours, and they are labeled "Simulated satellite"
+  everywhere. Precision and recall are reported on the real NASA data only. Root-cause accuracy
+  is reported on SIM-1 only.
 - **Existing work used:** open-source libraries, the NASA dataset, and the Telemanom
   method (LSTM forecasting + error thresholds) that inspired the Phase 4 detector.
 - **Built during the hackathon:** all code in this repository.

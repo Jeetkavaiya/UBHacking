@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 # Gemini's free-tier daily quota resets at midnight Pacific. Fixed UTC-8 (PST) is close enough.
 QUOTA_TZ = timezone(timedelta(hours=-8))
-DEFAULT_SOURCES = ("synthetic", "sample-replay")
+DEFAULT_SOURCES = ("synthetic", "sample-replay", "sim-scenario")
 
 
 class QuotaExhausted(Exception):
@@ -71,6 +71,7 @@ PAST = {
     "switch_to_backup": "Switched to the backup unit",
     "safe_mode": "Entered safe mode",
     "call_engineer": "Paged the on-call engineer",
+    "shed_load": "Switched off the payload to save power",
 }
 LABEL = {
     "monitor": "Keep monitoring",
@@ -78,7 +79,98 @@ LABEL = {
     "switch_to_backup": "Switch to backup unit",
     "safe_mode": "Enter safe mode",
     "call_engineer": "Call the on-call engineer",
+    "shed_load": "Switch off the payload to save power",
 }
+# SIM-1 has one more action: it has a payload that can be switched off.
+SIM_ACTIONS = ACTIONS + ["shed_load"]
+
+
+def _sim_parts() -> list[str]:
+    from .sim import PARTS
+    return list(PARTS)
+
+
+SIM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "subsystem": {"type": "string"},
+        "severity": {"type": "string", "enum": LEVELS},
+        "likely_cause": {"type": "string", "description": "What happened and why, 2-3 plain sentences."},
+        "root_cause": {"type": "string", "enum": _sim_parts()},
+        "evidence": {"type": "array", "items": {"type": "string"}, "description": "2-4 facts from the data."},
+        "recommended_action": {"type": "string", "enum": SIM_ACTIONS},
+        "target": {"type": "string", "enum": _sim_parts()},
+        "fallback_action": {"type": "string", "enum": SIM_ACTIONS},
+        "fallback_target": {"type": "string", "enum": _sim_parts()},
+        "confidence": {"type": "string", "enum": LEVELS},
+        "voice_summary": {"type": "string"},
+    },
+    "required": ["subsystem", "severity", "likely_cause", "root_cause", "evidence", "recommended_action",
+                 "target", "fallback_action", "fallback_target", "confidence", "voice_summary"],
+}
+
+# The spacecraft handbook: how SIM-1's parts work and connect. It deliberately does NOT list
+# fault signatures or answers; the flight director has to reason from the data.
+SIM_SYSTEM = """You are the flight director AI for SIM-1, a SIMULATED small Earth-orbiting satellite.
+You get one incident at a time: the first alarm, every linked symptom with timing, a snapshot of
+all sensors with their normal ranges, the spacecraft status (orbit, eclipse, ops plan, active
+units, heater state, expected solar current) and past incidents with what worked.
+
+SIM-1 handbook (how the parts work):
+- Orbit: 95 minutes, about 35 of them in Earth's shadow (eclipse). The solar array only makes
+  current in sunlight. solar_current_expected_now_a is what a healthy array gives right now.
+- Power: the array charges the battery in sunlight; in eclipse the battery alone powers every
+  load (bus, radio, payload camera, heater, wheel motor). More load or less solar input means a
+  deeper discharge. The ops plan may run extra loads, such as an imaging pass.
+- Thermal: a thermostat switches the battery heater on below 8 C and off above 12 C, reading the
+  ACTIVE battery temperature sensor. The heater controller has a backup (B). Outside temperatures
+  swing with sunlight and shadow.
+- Attitude: the active reaction wheel points the spacecraft; its motor current is the torque it
+  needs, and work turns into wheel heat. Pointing error grows when the wheel cannot deliver.
+- Comms: radio signal margin and transmitter temperature.
+- Spares: one backup (unit B) each for reaction_wheel, battery_temp_sensor, heater and radio.
+  The battery, solar array, payload and star tracker have no backup.
+
+Actions (pick ONE now, plus a fallback to try if the first does not work):
+- monitor: nothing is broken, or the behavior is expected.
+- power_cycle_sensor + target: restart that unit's electronics.
+- switch_to_backup + target: swap that part to unit B.
+- shed_load: switch the payload off to save power.
+- safe_mode: payload off and array to the sun. Only if the battery is in real danger; needs human approval.
+- call_engineer: a hardware problem commands cannot fix.
+
+Rules:
+- root_cause is the part that actually failed, or "none" if nothing failed. It is often NOT the
+  part the first alarming sensor describes. target is the part your action is sent to.
+- Use only part names from the list. Quote numbers from the data; never invent them.
+- Check past_incidents: do not repeat a fix that already failed on the same part.
+- likely_cause: 2-3 plain sentences a non-engineer understands: what happened and why.
+- evidence: 2-4 short facts from the data that support the root cause.
+- voice_summary: one sentence under 25 words, read aloud to the control room.
+- If unsure, say so and lower your confidence."""
+
+
+def label(action: str, target: str | None = None) -> str:
+    """Action label naming the part for SIM-1 (NASA parts are unknown, so no target there)."""
+    from .sim import PARTS
+    part = PARTS.get(target or "", None)
+    if part and target not in ("none", "spacecraft"):
+        if action == "power_cycle_sensor":
+            return f"Power cycle the {part}"
+        if action == "switch_to_backup":
+            return f"Switch the {part} to its backup"
+    return LABEL[action]
+
+
+def past(action: str, target: str | None = None) -> str:
+    from .sim import PARTS
+    part = PARTS.get(target or "", None)
+    if part and target not in ("none", "spacecraft"):
+        if action == "power_cycle_sensor":
+            return f"Power cycled the {part}"
+        if action == "switch_to_backup":
+            return f"Switched the {part} to its backup"
+    return PAST[action]
 
 Lookup = Callable[[str, float], Awaitable[list[dict]]]
 
@@ -108,8 +200,9 @@ def rule_diagnosis(ctx: dict, related: list[dict]) -> dict:
     shape, peak, z = ctx["shape"], ctx["peak_surprise"], ctx["threshold"]
     sev = "low" if peak < 2 * z else "medium" if peak < 4 * z else "high"
     cid, sub = ctx["channel"], ctx["subsystem"]
+    area = sub if sub.startswith("Group") else sub.lower()  # "Group T" stays a name; "Power" -> "power"
     moving = [r["channel"] for r in related if r.get("surprise_now", 0) > z * 0.5]
-    with_others = (f" {', '.join(moving[:2])} moved at the same time, so the wider {sub.lower()} area may be involved."
+    with_others = (f" {', '.join(moving[:2])} moved at the same time, so the wider {area} area may be involved."
                    if moving else " Related channels look normal, so this seems local to one unit.")
     if shape == "flatline":
         action, cause = "power_cycle_sensor", f"{cid} stopped changing when it normally moves. The sensor or its data link has likely frozen."
@@ -129,6 +222,58 @@ def rule_diagnosis(ctx: dict, related: list[dict]) -> dict:
     }
 
 
+def rule_diagnosis_sim(ctx: dict) -> dict:
+    """Naive SIM-1 rules: blame the part the FIRST alarming sensor describes, act on its shape.
+    They know nothing about the orbit, the ops plan or how parts affect each other. This is
+    the baseline the AI flight director is graded against."""
+    shape, peak, z = ctx["shape"], ctx["peak_surprise"], ctx["threshold"]
+    sev = "low" if peak < 2 * z else "medium" if peak < 4 * z else "high"
+    name, part = ctx["sensor_name"], ctx["part"]
+    lo, hi = ctx["normal_range"]
+    units = ctx.get("units", "")
+    from .sim import BACKUPS
+    fb, fb_target = "call_engineer", "spacecraft"
+    if shape == "spike":
+        root, action, target = "none", "monitor", part
+        cause = f"A brief jump on {name.lower()}. It looks like a one-off glitch."
+    elif shape == "flatline":
+        root = target = ctx.get("sensor_part") or part
+        action = "power_cycle_sensor"
+        cause = f"{name} stopped changing. The sensor has likely frozen."
+        if target in BACKUPS:
+            fb, fb_target = "switch_to_backup", target
+    else:
+        root, action, target = part, "switch_to_backup", part
+        cause = f"{name} moved outside its normal range ({lo:g} to {hi:g} {units})."
+        if sev == "high" and ctx["subsystem"] == "Power":
+            action, target = "safe_mode", "spacecraft"
+    now = (ctx.get("channel_stats") or {}).get("value_now")
+    evidence = [f"{name} is {now:g} {units}; normal is {lo:g} to {hi:g}." if now is not None
+                else f"{name} normal range is {lo:g} to {hi:g} {units}.",
+                f"Detector saw a {shape} (peak surprise {peak:.1f}, threshold {z:g})."]
+    return {
+        "subsystem": ctx["subsystem"],
+        "severity": sev,
+        "likely_cause": cause,
+        "root_cause": root,
+        "evidence": evidence,
+        "recommended_action": action,
+        "target": target,
+        "fallback_action": fb,
+        "fallback_target": fb_target,
+        "confidence": "medium" if shape != "spike" else "low",
+        "voice_summary": f"{sev.capitalize()} severity on {name.lower()}. Recommended: {label(action, target).lower()}.",
+    }
+
+
+def _valid_sim(d: dict) -> bool:
+    parts = set(_sim_parts())
+    return (isinstance(d, dict) and all(k in d for k in SIM_SCHEMA["required"])
+            and d["recommended_action"] in SIM_ACTIONS and d["fallback_action"] in SIM_ACTIONS
+            and d["root_cause"] in parts and d["target"] in parts and d["fallback_target"] in parts
+            and d["severity"] in LEVELS and d["confidence"] in LEVELS and isinstance(d["evidence"], list))
+
+
 def _valid(d: dict) -> bool:
     return (isinstance(d, dict) and all(k in d for k in SCHEMA["required"])
             and d["recommended_action"] in ACTIONS and d["severity"] in LEVELS and d["confidence"] in LEVELS)
@@ -136,8 +281,9 @@ def _valid(d: dict) -> bool:
 
 class FlightDirector:
     def __init__(self, api_key: str, model: str, rpm: int, timeout: float, cache_dir: Path, lookup: Lookup,
-                 sources: Iterable[str] = DEFAULT_SOURCES, daily_limit: int = 18):
-        self.model, self.timeout, self.lookup = model, timeout, lookup
+                 sources: Iterable[str] = DEFAULT_SOURCES, daily_limit: int = 18,
+                 sim_lookup: Callable[[list[str], float], Awaitable[list[dict]]] | None = None):
+        self.model, self.timeout, self.lookup, self.sim_lookup = model, timeout, lookup, sim_lookup
         self.limiter = RateLimiter(rpm)
         self.queue_lock = asyncio.Lock()  # one diagnosis at a time
         self.cache_path = cache_dir / "diagnosis_cache.json"
@@ -202,6 +348,8 @@ class FlightDirector:
                 "daily_limit": self.daily_limit or None}
 
     async def diagnose(self, ctx: dict) -> dict:
+        if ctx.get("kind") == "sim":
+            return await self._diagnose_sim(ctx)
         key = f"{ctx['channel']}|{ctx['shape']}|{ctx['source']}"
         if ctx["source"] == "sample-replay" and key in self.cache:
             self.stats["cache_hits"] += 1
@@ -231,6 +379,71 @@ class FlightDirector:
                 log.warning("Gemini failed (%s); using rules.", e)
                 self.stats["fallbacks"] += 1
                 return {**rule_diagnosis(ctx, related), "source": "rules-fallback"}
+
+    async def _diagnose_sim(self, ctx: dict) -> dict:
+        """SIM-1: Gemini reasons over named parts (2 requests); naive rules otherwise."""
+        if not self.client:
+            return {**rule_diagnosis_sim(ctx), "source": "rules"}
+        if not self.uses_gemini_for(ctx["source"]):
+            self.stats["skipped_source"] += 1
+            return {**rule_diagnosis_sim(ctx), "source": "rules"}
+        async with self.queue_lock:
+            if not self._has_budget(2):
+                self.stats["quota_blocked"] += 1
+                return {**rule_diagnosis_sim(ctx), "source": "rules-quota"}
+            try:
+                return {**await self._gemini_sim(ctx), "source": "gemini"}
+            except QuotaExhausted:
+                self.stats["quota_blocked"] += 1
+                return {**rule_diagnosis_sim(ctx), "source": "rules-quota"}
+            except Exception as e:
+                log.warning("Gemini (SIM-1) failed (%s); using rules.", e)
+                self.stats["fallbacks"] += 1
+                return {**rule_diagnosis_sim(ctx), "source": "rules-fallback"}
+
+    async def _gemini_sim(self, ctx: dict) -> dict:
+        from google.genai import types
+        decl = types.FunctionDeclaration(
+            name="get_sensor_history",
+            description="Summary of SIM-1 sensors over the last N mission minutes: min, max, mean, "
+                        "first and latest value, and the normal range. Use it to see what changed first "
+                        "or to compare sunlit and eclipse behavior.",
+            parameters_json_schema={"type": "object", "properties": {
+                "sensor_ids": {"type": "array", "items": {"type": "string"}},
+                "minutes": {"type": "number", "description": "5 to 150 mission minutes"}},
+                "required": ["sensor_ids"]},
+        )
+        prompt = "New SIM-1 incident:\n" + json.dumps(ctx, indent=1, default=str)
+        contents = [types.Content(role="user", parts=[types.Part(text=prompt)])]
+
+        # Request 1: Gemini may pull sensor history before deciding.
+        r1 = await self._call(contents, types.GenerateContentConfig(
+            system_instruction=SIM_SYSTEM, temperature=0.2,
+            tools=[types.Tool(function_declarations=[decl])],
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)))
+        calls = r1.function_calls or []
+        if calls and r1.candidates and self.sim_lookup:
+            contents.append(r1.candidates[0].content)
+            parts = []
+            for c in calls[:3]:
+                args = dict(c.args or {})
+                ids = [str(x) for x in (args.get("sensor_ids") or [ctx["channel"]])][:11]
+                mins = max(5.0, min(float(args.get("minutes", 30) or 30), 150.0))
+                parts.append(types.Part.from_function_response(
+                    name=c.name, response={"result": await self.sim_lookup(ids, mins)}))
+            contents.append(types.Content(role="user", parts=parts))
+            self.stats["tool_calls"] = self.stats.get("tool_calls", 0) + len(parts)
+        contents.append(types.Content(role="user", parts=[types.Part(text="Now give your decision as JSON.")]))
+
+        # Request 2: strict JSON decision.
+        r2 = await self._call(contents, types.GenerateContentConfig(
+            system_instruction=SIM_SYSTEM, temperature=0.2,
+            response_mime_type="application/json", response_json_schema=SIM_SCHEMA))
+        d = json.loads(r2.text or "{}")
+        if not _valid_sim(d):
+            raise ValueError(f"invalid SIM-1 decision: {d}")
+        d["evidence"] = [str(e) for e in d["evidence"]][:4]
+        return d
 
     async def _call(self, contents, config):
         from google.genai import errors

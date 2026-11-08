@@ -30,6 +30,15 @@ class Settings:
     # Stream: readings per channel per second at 1x speed
     base_rate: float = _f("BASE_RATE", 10)
 
+    # Simulated satellite SIM-1 (named parts, real command effects, known true causes)
+    sim: bool = os.getenv("SIM", "on").strip().lower() not in ("off", "0", "false", "no")
+    # What streams at start: nasa | sim | both
+    mode: str = os.getenv("MODE", "both").strip().lower()
+    # Persistence filter for SIM-1: readings in a row before an alarm (0 false alarms in 18 test orbits at 6)
+    sim_consecutive: int = _i("SIM_CONSECUTIVE", 6)
+    # How long (mission minutes) to wait for SIM-1 to recover after an action
+    sim_verify_minutes: float = _f("SIM_VERIFY_MINUTES", 45)
+
     # Detector
     z_threshold: float = _f("Z_THRESHOLD", 4.0)
     consecutive: int = _i("CONSECUTIVE", 3)
@@ -53,7 +62,7 @@ class Settings:
     gemini_timeout: float = _f("GEMINI_TIMEOUT", 25)
     # Incident sources that may use Gemini; others get rule-based diagnoses. "all" = every source.
     gemini_sources: list[str] = field(
-        default_factory=lambda: _list("GEMINI_SOURCES") or ["synthetic", "sample-replay"])
+        default_factory=lambda: _list("GEMINI_SOURCES") or ["synthetic", "sample-replay", "sim-scenario"])
     # Max Gemini requests per day (free tier is 20). 0 = no limit. Survives restarts.
     gemini_daily_limit: int = _i("GEMINI_DAILY_LIMIT", 18)
 
